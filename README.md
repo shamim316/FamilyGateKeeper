@@ -1,0 +1,72 @@
+# Family Gate Keeper
+
+A private data vault for the information a family needs once a year and needs badly: policy numbers,
+account numbers, the garage code, which plumber they used, when the registration expires, the dog's
+microchip number.
+
+Secret values are encrypted in the browser before they are sent anywhere. The server stores
+ciphertext it cannot read.
+
+## Status
+
+Early development. See [`docs/PLAN.md`](docs/PLAN.md) for the full product and implementation plan,
+and [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) for the field-level data model.
+
+Built so far:
+
+- Full Postgres schema with row-level security on every table (`supabase/migrations/`)
+- Client-side encryption core with test coverage (`src/lib/crypto/`)
+- Next.js app scaffold and Docker build for Easypanel
+
+## Stack
+
+| Layer | Choice |
+|---|---|
+| App | Next.js 15 (App Router), TypeScript, Tailwind CSS |
+| Data | Supabase Cloud — Postgres, Auth, Storage |
+| Crypto | WebCrypto AES-GCM + Argon2id, in the browser |
+| Deploy | Docker (`output: 'standalone'`) on Easypanel |
+| Tests | Vitest (unit + crypto), Playwright (end-to-end) |
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local   # fill in your Supabase keys
+npm run dev
+```
+
+Apply the database schema with the Supabase CLI:
+
+```bash
+supabase link --project-ref <your-project-ref>
+supabase db push
+```
+
+## Scripts
+
+| Command | Does |
+|---|---|
+| `npm run dev` | Development server on :3000 |
+| `npm run build` | Production build (standalone output) |
+| `npm test` | Vitest unit and crypto suites |
+| `npm run test:watch` | Vitest in watch mode |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+
+## Security model
+
+Three tiers, assigned per field:
+
+- **Tier 0 (plaintext)** — names, dates, vendor names, phone numbers, expiration dates. Stored in
+  ordinary columns so lists render, search works, and renewal reminders can be sent server-side
+  without the server ever seeing a secret.
+- **Tier 1 (encrypted)** — SSNs, passport and license numbers, account and card numbers, PINs,
+  alarm and garage codes, WiFi passwords, safe combinations. AES-GCM sealed in the browser.
+- **Tier 2 (encrypted files)** — document scans and insurance card photos, encrypted before upload.
+
+Keys are layered: a passphrase-derived KEK unwraps a per-family DEK, which unwraps a per-record CEK,
+which decrypts the field. The DEK is independently wrapped by a printable recovery code, so losing a
+passphrase is survivable — losing both is not, and onboarding says so plainly.
+
+See `src/lib/crypto/README.md` for the details.
