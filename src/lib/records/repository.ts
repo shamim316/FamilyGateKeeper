@@ -16,6 +16,8 @@ import {
   listSelection,
   maskedHint,
   toDbValue,
+  resolveCreateDefaults,
+  usesContentKey,
   type FormValues,
   type RecordDefinition,
   type FieldSpec,
@@ -35,10 +37,11 @@ export interface LoadedRecord {
   id: string;
   values: FormValues;
   /**
-   * This record's content key. Held by the form so that autosaving a field does
-   * not re-fetch and re-unwrap on every keystroke.
+   * This record's content key, held by the form so that autosaving a field does
+   * not re-fetch and re-unwrap on every keystroke. Null for the few tables that
+   * hold nothing worth sealing.
    */
-  cek: CryptoKey;
+  cek: CryptoKey | null;
 }
 
 export class RecordRepository {
@@ -53,8 +56,24 @@ export class RecordRepository {
    * Two hundred contacts would otherwise mean two hundred key unwrappings to
    * draw a screen that shows names. The hint columns exist for exactly this.
    */
-  async list(definition: RecordDefinition, familyId: string): Promise<RecordSummary[]> {
-    const rows = await this.gateway.list(definition.table, familyId, listSelection(definition));
+  async list(
+    definition: RecordDefinition,
+    familyId: string,
+    parentId?: string,
+  ): Promise<RecordSummary[]> {
+    // A child definition is always read through its parent; listing every
+    // service record a family owns is never what anyone wants.
+    const filter =
+      definition.parentColumn && parentId
+        ? { [definition.parentColumn]: parentId }
+        : undefined;
+
+    const rows = await this.gateway.list(
+      definition.table,
+      familyId,
+      listSelection(definition),
+      filter,
+    );
 
     return rows
       .map((row) => ({
@@ -72,7 +91,7 @@ export class RecordRepository {
   async load(definition: RecordDefinition, id: string): Promise<LoadedRecord | null> {
     const columns = [
       'id',
-      'wrapped_cek',
+      ...(usesContentKey(definition) ? ['wrapped_cek'] : []),
       ...definition.fields.map((field) => field.name),
       ...definition.fields.flatMap((field) => (field.hintColumn ? [field.hintColumn] : [])),
     ];
@@ -80,17 +99,23 @@ export class RecordRepository {
     const row = await this.gateway.get(definition.table, id, [...new Set(columns)]);
     if (!row) return null;
 
-    if (!isSealedEnvelope(row.wrapped_cek)) {
-      throw new Error('This record is missing its content key');
+    // Tables holding nothing worth sealing — paint colours, service history —
+    // carry no content key, and the definition says so.
+    let cek: CryptoKey | null = null;
+    if (usesContentKey(definition)) {
+      if (!isSealedEnvelope(row.wrapped_cek)) {
+        throw new Error('This record is missing its content key');
+      }
+      ({ key: cek } = await unwrapCek(this.dek, row.wrapped_cek));
     }
 
-    const { key: cek } = await unwrapCek(this.dek, row.wrapped_cek);
     const values: FormValues = {};
 
     for (const field of definition.fields) {
-      values[field.name] = field.secret
-        ? await this.openSecret(definition, cek, id, field, row[field.name])
-        : fromDbValue(field, (row[field.name] ?? null) as never);
+      values[field.name] =
+        field.secret && cek
+          ? await this.openSecret(definition, cek, id, field, row[field.name])
+          : fromDbValue(field, (row[field.name] ?? null) as never);
     }
 
     return { id, values, cek };
@@ -119,17 +144,25 @@ export class RecordRepository {
     definition: RecordDefinition,
     familyId: string,
     values: FormValues,
+    parentId?: string,
   ): Promise<LoadedRecord> {
     const id = crypto.randomUUID();
-    const { key: cek, wrapped } = await generateCek(this.dek);
+
+    let cek: CryptoKey | null = null;
+    let wrapped: SealedEnvelope | null = null;
+    if (usesContentKey(definition)) {
+      const minted = await generateCek(this.dek);
+      cek = minted.key;
+      wrapped = minted.wrapped;
+    }
 
     const encoded = await this.encodeFields(definition, cek, id, values);
 
     // Defaults fill NOT NULL enums the user has not chosen yet, but must never
     // overwrite something they did enter.
     const defaults: Row = {};
-    for (const [column, value] of Object.entries(definition.createDefaults ?? {})) {
-      if (encoded[column] === undefined || encoded[column] === null) {
+    for (const [column, value] of Object.entries(resolveCreateDefaults(definition))) {
+      if (encoded[column] === undefined || encoded[column] === null || encoded[column] === '') {
         defaults[column] = value;
       }
     }
@@ -137,7 +170,8 @@ export class RecordRepository {
     const row: Row = {
       id,
       family_id: familyId,
-      wrapped_cek: wrapped,
+      ...(wrapped ? { wrapped_cek: wrapped } : {}),
+      ...(definition.parentColumn && parentId ? { [definition.parentColumn]: parentId } : {}),
       ...encoded,
       ...defaults,
     };
@@ -149,7 +183,7 @@ export class RecordRepository {
   async update(
     definition: RecordDefinition,
     id: string,
-    cek: CryptoKey,
+    cek: CryptoKey | null,
     patch: FormValues,
   ): Promise<void> {
     const encoded = await this.encodeFields(definition, cek, id, patch);
@@ -164,7 +198,7 @@ export class RecordRepository {
   /** Turns form values into database columns, sealing anything marked secret. */
   private async encodeFields(
     definition: RecordDefinition,
-    cek: CryptoKey,
+    cek: CryptoKey | null,
     id: string,
     values: FormValues,
   ): Promise<Row> {
@@ -177,6 +211,14 @@ export class RecordRepository {
       if (!field.secret) {
         row[field.name] = toDbValue(field, value);
         continue;
+      }
+
+      if (!cek) {
+        // A definition declaring a secret field on a table with no content key
+        // is a mistake that must not degrade into writing plaintext.
+        throw new Error(
+          `${definition.table}.${field.name} is marked secret but the record has no content key`,
+        );
       }
 
       const text = typeof value === 'string' ? value.trim() : '';

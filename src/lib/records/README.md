@@ -34,7 +34,8 @@ sealed column, only tier-0 fields and hints.
 | File | Does |
 |---|---|
 | `definition.ts` | The shape of a record type, and value conversion between form and Postgres |
-| `definitions.ts` | The three real ones: contacts, policies, financial accounts |
+| `definitions.ts` | Contacts, policies, financial accounts |
+| `core-definitions.ts` | People, homes, and vehicles, each with child collections |
 | `gateway.ts` | Raw row access. Knows nothing about encryption — sealing has already happened |
 | `repository.ts` | Seals on the way out, opens on the way back |
 | `autosave.ts` | Debounced saving with no save button |
@@ -56,6 +57,26 @@ follow:
 
 Timers are injected, so the tests run a minute of typing in a millisecond.
 
+## Child collections
+
+A vehicle's service history, a person's ID documents, a property's appliances. A child is an
+ordinary definition with `parentColumn` set, so it gets the same field specs, sealing, and autosave
+as anything else; only listing and creation differ.
+
+Children collapse to a one-line summary and expand into the same form. A property can easily have
+fifteen appliances, and fifteen open forms is not a page anyone can read.
+
+## NOT NULL columns
+
+Records are created empty and opened immediately, so a blank NOT NULL column would fail the very
+first insert. Fields on such columns are marked `required` and written as `''` rather than `NULL` —
+which satisfies the constraint and still reads as "nothing here yet".
+
+`createDefaults` covers the rest: NOT NULL enums get a starting value, and a NOT NULL date (a
+service log entry) takes a thunk so it defaults to today. `schema-drift.test.ts` reads nullability
+straight out of the migrations and fails if any of these is left unsupplied — the check that would
+have caught this before it shipped.
+
 ## Money
 
 Stored as integer cents in `*_cents` columns. Floating-point dollars quietly lose a penny somewhere
@@ -66,6 +87,9 @@ between the form and a mortgage balance.
 An empty field is written as `NULL`, not `''`. Otherwise "has no phone number" and "nobody has
 filled this in yet" become indistinguishable — and the second is the one a completeness meter and a
 "last verified" nudge need to see.
+
+The exception is the `required` fields above, where the column forbids `NULL` and an empty string is
+the closest available stand-in.
 
 ## Tests
 

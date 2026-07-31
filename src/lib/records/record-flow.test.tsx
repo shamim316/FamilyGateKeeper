@@ -334,3 +334,130 @@ describe('the record form', () => {
     expect(await screen.findByText(/has been deleted/i, {}, WAIT)).toBeInTheDocument();
   });
 });
+
+describe('child collections', () => {
+  async function createVehicle() {
+    await mount(<RecordListScreen slug="vehicles" />);
+    const user = userEvent.setup();
+
+    // The button reads "Add your first vehicle" on an empty list and "Add
+    // vehicle" once there is one, so this has to match both.
+    await user.click(await screen.findByRole('button', { name: /add (your first )?vehicle/i }, WAIT));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+
+    return String(push.mock.calls[push.mock.calls.length - 1][0]).split('/').pop()!;
+  }
+
+  it('shows the service history section beneath the vehicle', async () => {
+    const id = await createVehicle();
+    await mount(<RecordDetailScreen slug="vehicles" id={id} />);
+
+    expect(await screen.findByText('Service history', {}, WAIT)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /log a service/i })).toBeInTheDocument();
+  });
+
+  it('adds a service record linked to that vehicle', async () => {
+    const id = await createVehicle();
+    const user = userEvent.setup();
+
+    await mount(<RecordDetailScreen slug="vehicles" id={id} />);
+    await screen.findByText('Service history', {}, WAIT);
+
+    await user.click(screen.getByRole('button', { name: /log a service/i }));
+
+    await waitFor(() => expect(gateway.rawRows('vehicle_service_records')).toHaveLength(1));
+    const [row] = gateway.rawRows('vehicle_service_records');
+    expect(row.vehicle_id).toBe(id);
+
+    // A NOT NULL date column cannot take an empty string.
+    expect(row.serviced_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('opens the new child so it can be filled in immediately', async () => {
+    const id = await createVehicle();
+    const user = userEvent.setup();
+
+    await mount(<RecordDetailScreen slug="vehicles" id={id} />);
+    await screen.findByText('Service history', {}, WAIT);
+    await user.click(screen.getByRole('button', { name: /log a service/i }));
+
+    const whatWasDone = await screen.findByLabelText(/what was done/i, {}, WAIT);
+    await user.type(whatWasDone, 'Oil change');
+    await user.tab();
+
+    await waitFor(() => {
+      const [row] = gateway.rawRows('vehicle_service_records');
+      expect(row.service_type).toBe('Oil change');
+    });
+  });
+
+  it('collapses a child down to a one-line summary', async () => {
+    const id = await createVehicle();
+    const user = userEvent.setup();
+
+    await mount(<RecordDetailScreen slug="vehicles" id={id} />);
+    await screen.findByText('Service history', {}, WAIT);
+    await user.click(screen.getByRole('button', { name: /log a service/i }));
+
+    await user.type(await screen.findByLabelText(/what was done/i, {}, WAIT), 'Oil change');
+    await user.tab();
+    await waitFor(() => {
+      const [row] = gateway.rawRows('vehicle_service_records');
+      expect(row.service_type).toBe('Oil change');
+    });
+
+    // Collapse it. Fifteen open forms is not a page anyone can read.
+    const toggles = screen.getAllByRole('button', { expanded: true });
+    await user.click(toggles[0]);
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/what was done/i)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Oil change/)).toBeInTheDocument();
+  });
+
+  it('seals a secret on a child record too', async () => {
+    const user = userEvent.setup();
+    await mount(<RecordListScreen slug="people" />);
+
+    await user.click(await screen.findByRole('button', { name: /add your first person/i }, WAIT));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    const personId = String(push.mock.calls[0][0]).split('/').pop()!;
+
+    await mount(<RecordDetailScreen slug="people" id={personId} />);
+    await screen.findByText('ID documents', {}, WAIT);
+    await user.click(screen.getByRole('button', { name: /add a document/i }));
+
+    await user.type(await screen.findByLabelText(/^Number/, {}, WAIT), 'X1234567');
+    await user.tab();
+
+    await waitFor(() => {
+      const [row] = gateway.rawRows('member_identifications');
+      expect(row.document_number_hint).toBe('••••4567');
+    });
+    expect(gateway.everythingStored()).not.toContain('X1234567');
+  });
+
+  it('keeps one parent\'s children away from another\'s', async () => {
+    const first = await createVehicle();
+    const user = userEvent.setup();
+
+    await mount(<RecordDetailScreen slug="vehicles" id={first} />);
+    await screen.findByText('Service history', {}, WAIT);
+    await user.click(screen.getByRole('button', { name: /log a service/i }));
+    await user.type(await screen.findByLabelText(/what was done/i, {}, WAIT), 'Belongs to first');
+    await user.tab();
+    await waitFor(() => expect(gateway.rawRows('vehicle_service_records')).toHaveLength(1));
+
+    push.mockClear();
+    const second = await createVehicle();
+
+    await mount(<RecordDetailScreen slug="vehicles" id={second} />);
+    await screen.findByText('Service history', {}, WAIT);
+
+    // The child list loads asynchronously, so wait for the empty state to
+    // actually render rather than reading the section mid-load.
+    expect(await screen.findByText(/A log rather than/i, {}, WAIT)).toBeInTheDocument();
+    expect(screen.queryByText(/Belongs to first/)).not.toBeInTheDocument();
+  });
+});

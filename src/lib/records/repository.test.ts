@@ -4,10 +4,16 @@ import { isSealedEnvelope } from '@/lib/crypto/envelope';
 import { MemoryRecordGateway } from './memory-gateway';
 import { RecordRepository, emptyValues } from './repository';
 import { contactsDefinition, policiesDefinition, accountsDefinition } from './definitions';
+import { householdMembersDefinition, vehiclesDefinition } from './core-definitions';
 import { listSelection, maskedHint, toDbValue, fromDbValue } from './definition';
 import type { FieldSpec } from './definition';
 
 const FAMILY = 'family-1';
+
+/** The service-history child, reached through the vehicle that owns it. */
+function serviceRecordsDefinitionFor() {
+  return vehiclesDefinition.children![0].definition;
+}
 
 let gateway: MemoryRecordGateway;
 let repository: RecordRepository;
@@ -364,5 +370,176 @@ describe('every definition', () => {
       const names = definition.fields.map((field) => field.name);
       expect(new Set(names).size, definition.slug).toBe(names.length);
     }
+  });
+});
+
+describe('creating an empty record, the way the Add button does', () => {
+  it('writes something for every column the database insists on', async () => {
+    // The create flow inserts a blank row and opens it, so a NOT NULL column
+    // left as null fails the very first insert against real Postgres. The
+    // in-memory gateway does not enforce that, which is why schema-drift.test
+    // checks the constraint and this checks the value that lands.
+    //
+    // Only fields marked required are asserted. A title can be genuinely
+    // nullable — policies.label is — and the list falls back to "Untitled".
+    for (const definition of [
+      contactsDefinition,
+      policiesDefinition,
+      accountsDefinition,
+      householdMembersDefinition,
+      vehiclesDefinition,
+    ]) {
+      const store = new MemoryRecordGateway();
+      const repo = new RecordRepository(store, dek);
+
+      await repo.create(definition, FAMILY, emptyValues(definition));
+      const [row] = store.rawRows(definition.table);
+
+      for (const field of definition.fields.filter((candidate) => candidate.required)) {
+        expect(row[field.name], `${definition.table}.${field.name}`).not.toBeNull();
+        expect(row[field.name], `${definition.table}.${field.name}`).not.toBeUndefined();
+      }
+
+      for (const column of Object.keys(definition.createDefaults ?? {})) {
+        expect(row[column], `${definition.table}.${column}`).not.toBeNull();
+      }
+    }
+  });
+
+  it('leaves a blank required field readable as empty, not as a placeholder', async () => {
+    const created = await repository.create(
+      contactsDefinition,
+      FAMILY,
+      emptyValues(contactsDefinition),
+    );
+
+    // Empty string, not "Untitled" — the form should open blank and the list
+    // decides how to label a nameless record.
+    const [row] = gateway.rawRows('contacts');
+    expect(row.name).toBe('');
+
+    const loaded = await repository.load(contactsDefinition, created.id);
+    expect(loaded?.values.name).toBe('');
+  });
+
+  it('still writes null for a blank optional field', async () => {
+    await repository.create(contactsDefinition, FAMILY, emptyValues(contactsDefinition));
+    const [row] = gateway.rawRows('contacts');
+    expect(row.phone).toBeNull();
+  });
+});
+
+describe('child records', () => {
+  it('links a child to its parent and lists it back', async () => {
+    const vehicle = await repository.create(vehiclesDefinition, FAMILY, {
+      ...emptyValues(vehiclesDefinition),
+      nickname: "Mom's Honda",
+    });
+
+    const service = serviceRecordsDefinitionFor();
+    await repository.create(
+      service,
+      FAMILY,
+      { ...emptyValues(service), service_type: 'Oil change' },
+      vehicle.id,
+    );
+
+    const [row] = gateway.rawRows('vehicle_service_records');
+    expect(row.vehicle_id).toBe(vehicle.id);
+
+    const listed = await repository.list(service, FAMILY, vehicle.id);
+    expect(listed.map((entry) => entry.title)).toEqual(['Oil change']);
+  });
+
+  it('does not mix one parent\'s children into another\'s', async () => {
+    const service = serviceRecordsDefinitionFor();
+
+    const first = await repository.create(vehiclesDefinition, FAMILY, {
+      ...emptyValues(vehiclesDefinition),
+      nickname: 'First',
+    });
+    const second = await repository.create(vehiclesDefinition, FAMILY, {
+      ...emptyValues(vehiclesDefinition),
+      nickname: 'Second',
+    });
+
+    await repository.create(
+      service,
+      FAMILY,
+      { ...emptyValues(service), service_type: 'Belongs to first' },
+      first.id,
+    );
+
+    expect(await repository.list(service, FAMILY, second.id)).toEqual([]);
+    expect((await repository.list(service, FAMILY, first.id)).length).toBe(1);
+  });
+
+  it('fills a NOT NULL date default at the moment of creation', async () => {
+    const service = serviceRecordsDefinitionFor();
+    const vehicle = await repository.create(vehiclesDefinition, FAMILY, {
+      ...emptyValues(vehiclesDefinition),
+      nickname: 'Car',
+    });
+
+    await repository.create(service, FAMILY, emptyValues(service), vehicle.id);
+
+    const [row] = gateway.rawRows('vehicle_service_records');
+    // A date column cannot take an empty string, so this one defaults to today.
+    expect(row.serviced_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('works on a table that has no content key at all', async () => {
+    const service = serviceRecordsDefinitionFor();
+    const vehicle = await repository.create(vehiclesDefinition, FAMILY, {
+      ...emptyValues(vehiclesDefinition),
+      nickname: 'Car',
+    });
+
+    const created = await repository.create(
+      service,
+      FAMILY,
+      { ...emptyValues(service), service_type: 'Brakes', vendor_name: 'Riverside' },
+      vehicle.id,
+    );
+
+    expect(created.cek).toBeNull();
+    const [row] = gateway.rawRows('vehicle_service_records');
+    expect(row.wrapped_cek).toBeUndefined();
+
+    const loaded = await repository.load(service, created.id);
+    expect(loaded?.values.service_type).toBe('Brakes');
+    expect(loaded?.cek).toBeNull();
+  });
+
+  it('still seals a child that does have secrets', async () => {
+    const person = await repository.create(householdMembersDefinition, FAMILY, {
+      ...emptyValues(householdMembersDefinition),
+      display_name: 'Dana',
+    });
+
+    const ids = householdMembersDefinition.children![0].definition;
+    await repository.create(
+      ids,
+      FAMILY,
+      { ...emptyValues(ids), label: 'Passport', document_number: 'X1234567' },
+      person.id,
+    );
+
+    expect(gateway.everythingStored()).not.toContain('X1234567');
+    const [row] = gateway.rawRows('member_identifications');
+    expect(row.document_number_hint).toBe('••••4567');
+  });
+});
+
+describe('a secret on a table with no content key', () => {
+  it('refuses rather than quietly writing plaintext', async () => {
+    const broken = {
+      ...serviceRecordsDefinitionFor(),
+      fields: [{ name: 'service_type', label: 'Type', kind: 'text' as const, secret: true }],
+    };
+
+    await expect(
+      repository.create(broken, FAMILY, { service_type: 'secret' }),
+    ).rejects.toThrow(/marked secret but the record has no content key/);
   });
 });

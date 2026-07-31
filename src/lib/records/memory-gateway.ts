@@ -7,7 +7,7 @@
  * assert that no plaintext ever reached it.
  */
 
-import type { RecordGateway, Row } from './gateway';
+import type { RecordGateway, Row, RowFilter } from './gateway';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -33,9 +33,17 @@ export class MemoryRecordGateway implements RecordGateway {
     return rows;
   }
 
-  async list(table: string, familyId: string, columns: string[]): Promise<Row[]> {
+  async list(
+    table: string,
+    familyId: string,
+    columns: string[],
+    filter?: RowFilter,
+  ): Promise<Row[]> {
     return this.rowsFor(table)
       .filter((row) => row.family_id === familyId)
+      .filter((row) =>
+        Object.entries(filter ?? {}).every(([column, value]) => row[column] === value),
+      )
       .map((row) => clone(pick(row, columns)));
   }
 

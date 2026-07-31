@@ -55,6 +55,16 @@ export interface FieldSpec {
    */
   group?: 'core' | 'more';
 
+  /**
+   * The column is NOT NULL in the schema.
+   *
+   * Records are created empty and opened immediately, so a blank required
+   * column is written as an empty string rather than NULL — which satisfies the
+   * constraint while still reading as "nothing here yet" in the UI. Without
+   * this the very first insert of every record type fails.
+   */
+  required?: boolean;
+
   options?: { value: string; label: string }[];
   placeholder?: string;
   help?: string;
@@ -84,10 +94,58 @@ export interface RecordDefinition {
    * the database insists on needs a sensible starting point rather than a
    * required field on the form.
    */
-  createDefaults?: Record<string, DbValue>;
+  createDefaults?: Record<string, DbValue | (() => DbValue)>;
+
+  /**
+   * Whether rows carry their own `wrapped_cek`. True for anything with a secret
+   * field; false for the few child tables that hold nothing worth sealing, such
+   * as paint colours. The schema-drift test keeps this honest against the
+   * actual columns.
+   */
+  contentKey?: boolean;
+
+  /**
+   * Set on a child definition: the column pointing at its parent, e.g.
+   * `vehicle_id` on a service record.
+   */
+  parentColumn?: string;
+
+  /** Collections shown beneath this record's own form. */
+  children?: ChildSection[];
 
   /** Columns to select for the list view. Derived, but overridable. */
   listColumns?: string[];
+}
+
+/**
+ * A one-to-many collection under a record — a vehicle's service history, a
+ * person's ID documents, a property's appliances.
+ *
+ * The child is an ordinary RecordDefinition with `parentColumn` set, so it gets
+ * the same field specs, sealing, and autosave as anything else. Only the way it
+ * is listed and created differs.
+ */
+export interface ChildSection {
+  definition: RecordDefinition;
+  title: string;
+  /** Shown when the collection is empty. */
+  emptyMessage: string;
+  addLabel: string;
+  /** Builds the one-line summary shown on a collapsed child. */
+  summarize: (values: FormValues) => string;
+}
+
+export function usesContentKey(definition: RecordDefinition): boolean {
+  return definition.contentKey ?? true;
+}
+
+/** Resolves createDefaults, calling any thunks — a date default means today. */
+export function resolveCreateDefaults(definition: RecordDefinition): Record<string, DbValue> {
+  const resolved: Record<string, DbValue> = {};
+  for (const [column, value] of Object.entries(definition.createDefaults ?? {})) {
+    resolved[column] = typeof value === 'function' ? value() : value;
+  }
+  return resolved;
 }
 
 export function secretFields(definition: RecordDefinition): FieldSpec[] {
@@ -113,6 +171,7 @@ export function listSelection(definition: RecordDefinition): string[] {
   const columns = new Set<string>(['id', 'updated_at']);
   columns.add(definition.titleField);
   if (definition.subtitleField) columns.add(definition.subtitleField);
+  if (definition.parentColumn) columns.add(definition.parentColumn);
 
   for (const field of definition.fields) {
     if (!field.secret) columns.add(field.name);
@@ -136,8 +195,9 @@ export function toDbValue(field: FieldSpec, value: FormValue): DbValue {
   const trimmed = value.trim();
   // An empty field means "not recorded", which is null rather than an empty
   // string — otherwise "has no phone number" and "nobody has filled this in"
-  // become indistinguishable.
-  if (trimmed === '') return null;
+  // become indistinguishable. NOT NULL columns are the exception; they take an
+  // empty string, which reads the same way but satisfies the constraint.
+  if (trimmed === '') return field.required ? '' : null;
 
   switch (field.kind) {
     case 'money': {

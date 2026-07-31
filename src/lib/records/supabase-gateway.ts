@@ -8,7 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { RecordGatewayError, type RecordGateway, type Row } from './gateway';
+import { RecordGatewayError, type RecordGateway, type Row, type RowFilter } from './gateway';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
@@ -23,11 +23,19 @@ export class SupabaseRecordGateway implements RecordGateway {
     return this.client;
   }
 
-  async list(table: string, familyId: string, columns: string[]): Promise<Row[]> {
-    const { data, error } = await this.supabase
-      .from(table)
-      .select(columns.join(', '))
-      .eq('family_id', familyId);
+  async list(
+    table: string,
+    familyId: string,
+    columns: string[],
+    filter?: RowFilter,
+  ): Promise<Row[]> {
+    let query = this.supabase.from(table).select(columns.join(', ')).eq('family_id', familyId);
+
+    for (const [column, value] of Object.entries(filter ?? {})) {
+      query = query.eq(column, value);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new RecordGatewayError(`Could not load ${table}`, { cause: error });
     // The column list is built at runtime from a definition, so PostgREST's

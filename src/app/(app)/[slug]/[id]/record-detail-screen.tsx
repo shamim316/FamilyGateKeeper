@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { definitionBySlug } from '@/lib/records/definitions';
 import { useRecord } from '@/lib/records/use-records';
 import { RecordForm } from '@/components/records/record-form';
+import { ChildSection } from '@/components/records/child-section';
 import { useVault } from '@/lib/vault/vault-provider';
 import { Button, Callout, ErrorMessage, Screen } from '@/components/ui';
 
@@ -99,6 +100,14 @@ export function RecordDetailScreen({ slug, id }: { slug: string; id: string }) {
         onSave={save}
         autoFocusFirst={title === ''}
       />
+
+      {definition.children && definition.children.length > 0 && (
+        <div className="mt-10 grid gap-10">
+          {definition.children.map((section) => (
+            <ChildSection key={section.definition.table} section={section} parentId={record.id} />
+          ))}
+        </div>
+      )}
 
       <div className="mt-10 border-t border-[var(--color-line)] pt-6">
         {confirmingDelete ? (

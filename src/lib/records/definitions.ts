@@ -9,6 +9,11 @@
  */
 
 import type { RecordDefinition } from './definition';
+import {
+  householdMembersDefinition,
+  propertiesDefinition,
+  vehiclesDefinition,
+} from './core-definitions';
 
 /** Categories offered as suggestions. Free text underneath, always. */
 const CONTACT_CATEGORIES = [
@@ -40,7 +45,14 @@ export const contactsDefinition: RecordDefinition = {
   subtitleField: 'category',
 
   fields: [
-    { name: 'name', label: 'Name', kind: 'text', group: 'core', placeholder: 'Riverside Plumbing' },
+    {
+      name: 'name',
+      label: 'Name',
+      kind: 'text',
+      group: 'core',
+      required: true,
+      placeholder: 'Riverside Plumbing',
+    },
     {
       name: 'category',
       label: 'What are they?',
@@ -218,6 +230,7 @@ export const accountsDefinition: RecordDefinition = {
       label: 'What do you call it?',
       kind: 'text',
       group: 'core',
+      required: true,
       placeholder: 'Joint checking',
     },
     {
@@ -271,7 +284,24 @@ export const accountsDefinition: RecordDefinition = {
   createDefaults: { account_type: 'other' },
 };
 
-export const ALL_DEFINITIONS = [contactsDefinition, policiesDefinition, accountsDefinition];
+/**
+ * Order matters: this is the order the sections appear on the vault home
+ * screen, so it runs from the things a family reaches for most often.
+ */
+export const ALL_DEFINITIONS = [
+  householdMembersDefinition,
+  propertiesDefinition,
+  vehiclesDefinition,
+  contactsDefinition,
+  policiesDefinition,
+  accountsDefinition,
+];
+
+export {
+  householdMembersDefinition,
+  propertiesDefinition,
+  vehiclesDefinition,
+} from './core-definitions';
 
 export function definitionBySlug(slug: string): RecordDefinition | undefined {
   return ALL_DEFINITIONS.find((definition) => definition.slug === slug);

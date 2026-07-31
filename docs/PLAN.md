@@ -426,8 +426,18 @@ Ten milestones. Each ends in something deployable and testable.
 
    `attachments` slipped to Milestone 6, where document upload belongs alongside the categories
    that need it.
-5. **Core categories** — Household Members, House (with appliances and finishes), Vehicles (with
-   service log). The three heaviest sections; they exercise the whole pattern.
+5. **Core categories** — ✅ *done.* People, Homes (with utilities, appliances, and paint colours),
+   and Vehicles (with a service log). Six categories now run on the definition layer.
+
+   The one new pattern was **child records** — collections under a record, which collapse to a
+   one-line summary and expand into the same autosave form. A child is an ordinary definition with
+   a `parentColumn`, so it gets the same sealing and autosave for free.
+
+   This also uncovered a bug shipped in Milestone 4: every "create empty and open it" insert wrote
+   NULL into NOT NULL columns and would have failed against real Postgres. The in-memory gateway
+   does not enforce constraints, so 178 tests had passed over it. Fields on NOT NULL columns are
+   now marked `required` and written as empty strings, and the schema-drift test reads nullability
+   out of the migrations and fails if any such column is left unsupplied.
 6. **Remaining categories** — Health, Education, Communication, Pets, Subscriptions, Estate &
    Legal, Documents, Valuables, Memberships, Travel. Mostly definitions now, plus `attachments`
    and the child-record pattern (service logs, health facts) that the definition layer does not

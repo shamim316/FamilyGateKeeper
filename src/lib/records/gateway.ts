@@ -12,8 +12,16 @@
 
 export type Row = Record<string, unknown>;
 
+/** Narrows a list to one parent's children, e.g. `{ vehicle_id: '…' }`. */
+export type RowFilter = Record<string, string>;
+
 export interface RecordGateway {
-  list(table: string, familyId: string, columns: string[]): Promise<Row[]>;
+  list(
+    table: string,
+    familyId: string,
+    columns: string[],
+    filter?: RowFilter,
+  ): Promise<Row[]>;
 
   get(table: string, id: string, columns: string[]): Promise<Row | null>;
 
