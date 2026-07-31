@@ -13,10 +13,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ALL_DEFINITIONS } from './definitions';
 import { CHILD_DEFINITIONS } from './core-definitions';
+import { MORE_CHILD_DEFINITIONS } from './more-definitions';
 import { listSelection, usesContentKey } from './definition';
 
 /** Parents and children alike; a typo in a child is just as fatal. */
-const EVERY_DEFINITION = [...ALL_DEFINITIONS, ...CHILD_DEFINITIONS];
+const EVERY_DEFINITION = [...ALL_DEFINITIONS, ...CHILD_DEFINITIONS, ...MORE_CHILD_DEFINITIONS];
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
 

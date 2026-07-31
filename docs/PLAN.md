@@ -438,10 +438,18 @@ Ten milestones. Each ends in something deployable and testable.
    does not enforce constraints, so 178 tests had passed over it. Fields on NOT NULL columns are
    now marked `required` and written as empty strings, and the schema-drift test reads nullability
    out of the migrations and fails if any such column is left unsupplied.
-6. **Remaining categories** — Health, Education, Communication, Pets, Subscriptions, Estate &
-   Legal, Documents, Valuables, Memberships, Travel. Mostly definitions now, plus `attachments`
-   and the child-record pattern (service logs, health facts) that the definition layer does not
-   yet cover.
+6. **Remaining categories** — ✅ *done, except documents.* Thirteen top-level sections and six
+   child collections, all of them definitions. Health, education, and activities hang off a
+   person; WiFi hangs off a home; phone lines hang off a service.
+
+   The vault home groups them under four headings — Your family, Your home, Money, Everything
+   else — because thirteen flat cards is a wall rather than a menu.
+
+   **Documents did not ship.** Encrypted file upload needs a Storage bucket, its own RLS policies,
+   and a client-side encrypt-then-upload path, and none of it can be exercised against the
+   in-memory gateway that every other test uses. Building it blind, on top of a stack that has
+   never met real Postgres, is how the NOT NULL bug in Milestone 5 happened. It is the first thing
+   to build once a Supabase project exists.
 7. **Reminders & renewals** — `expires_on` indexing, dashboard, Supabase scheduled function, email
    via Resend, `last_verified_at` nudges.
 8. **Emergency mode & print** — break-glass screen, offline cache, single-page printable sheet.

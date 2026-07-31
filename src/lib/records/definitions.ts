@@ -14,6 +14,7 @@ import {
   propertiesDefinition,
   vehiclesDefinition,
 } from './core-definitions';
+import { MORE_DEFINITIONS } from './more-definitions';
 
 /** Categories offered as suggestions. Free text underneath, always. */
 const CONTACT_CATEGORIES = [
@@ -43,6 +44,7 @@ export const contactsDefinition: RecordDefinition = {
     'Everyone your family relies on — the plumber, the pediatrician, the insurance agent — in one place you can search.',
   titleField: 'name',
   subtitleField: 'category',
+  homeGroup: 'life',
 
   fields: [
     {
@@ -121,6 +123,7 @@ export const policiesDefinition: RecordDefinition = {
     'Every policy you hold, with the numbers and renewal dates you can never find when you need them.',
   titleField: 'label',
   subtitleField: 'carrier_name',
+  homeGroup: 'money',
 
   fields: [
     {
@@ -223,6 +226,7 @@ export const accountsDefinition: RecordDefinition = {
     'Bank accounts, cards, loans, and retirement savings — with the numbers you need on the phone with support.',
   titleField: 'nickname',
   subtitleField: 'institution_name',
+  homeGroup: 'money',
 
   fields: [
     {
@@ -295,6 +299,7 @@ export const ALL_DEFINITIONS = [
   contactsDefinition,
   policiesDefinition,
   accountsDefinition,
+  ...MORE_DEFINITIONS,
 ];
 
 export {

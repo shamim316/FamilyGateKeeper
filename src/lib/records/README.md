@@ -34,8 +34,9 @@ sealed column, only tier-0 fields and hints.
 | File | Does |
 |---|---|
 | `definition.ts` | The shape of a record type, and value conversion between form and Postgres |
-| `definitions.ts` | Contacts, policies, financial accounts |
+| `definitions.ts` | Contacts, policies, financial accounts, and the catalogue of all thirteen |
 | `core-definitions.ts` | People, homes, and vehicles, each with child collections |
+| `more-definitions.ts` | Health, education, phone and internet, pets, subscriptions, estate, valuables, memberships, travel |
 | `gateway.ts` | Raw row access. Knows nothing about encryption — sealing has already happened |
 | `repository.ts` | Seals on the way out, opens on the way back |
 | `autosave.ts` | Debounced saving with no save button |
@@ -97,8 +98,11 @@ the closest available stand-in.
 - `autosave.test.ts` — coalescing, failure retention, retry ordering, overlapping saves
 - `record-flow.test.tsx` — the real screens, driven with real crypto against the memory gateway
 - `schema-drift.test.ts` — reads the migrations and fails if a definition names a column that does
-  not exist. Without a live database, this is what catches a typo that would otherwise surface as a
-  runtime insert failure.
+  not exist, or leaves a NOT NULL column unsupplied. Without a live database, this is what catches
+  a mistake that would otherwise surface as a runtime insert failure.
+- `catalogue.test.ts` — invariants across every category: each has a home on the front screen, no
+  slug collides with a vault route, no sealed field is used as a title or selected into a list,
+  and every child is reachable through exactly one parent.
 
 ```bash
 npm test

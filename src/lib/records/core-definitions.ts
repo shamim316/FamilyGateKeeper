@@ -7,6 +7,7 @@
  */
 
 import type { FormValues, RecordDefinition } from './definition';
+import { HOME_WIFI_SECTION, PERSON_CHILD_SECTIONS } from './more-definitions';
 
 function text(values: FormValues, name: string): string {
   const value = values[name];
@@ -102,6 +103,7 @@ export const householdMembersDefinition: RecordDefinition = {
     'Everyone in your household, with the documents and dates that are impossible to find in a hurry.',
   titleField: 'display_name',
   subtitleField: 'relationship',
+  homeGroup: 'family',
 
   fields: [
     {
@@ -167,6 +169,7 @@ export const householdMembersDefinition: RecordDefinition = {
         ]);
       },
     },
+    ...PERSON_CHILD_SECTIONS,
   ],
 };
 
@@ -217,6 +220,7 @@ export const vehiclesDefinition: RecordDefinition = {
     'Every car, with the registration dates, the VIN, and the tyre size you need at the parts counter.',
   titleField: 'nickname',
   subtitleField: 'license_plate',
+  homeGroup: 'home',
 
   fields: [
     {
@@ -436,6 +440,7 @@ export const propertiesDefinition: RecordDefinition = {
     'Your home, with the shutoff locations, appliance warranties, and paint colours nobody writes down.',
   titleField: 'nickname',
   subtitleField: 'street_address',
+  homeGroup: 'home',
 
   fields: [
     {
@@ -551,6 +556,7 @@ export const propertiesDefinition: RecordDefinition = {
           text(values, 'brand'),
         ]),
     },
+    HOME_WIFI_SECTION,
   ],
 };
 

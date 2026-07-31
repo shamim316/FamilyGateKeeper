@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ALL_DEFINITIONS } from '@/lib/records/definitions';
+import { HOME_GROUPS } from '@/lib/records/definition';
 import { useVault } from '@/lib/vault/vault-provider';
 import { createClient } from '@/lib/supabase/client';
 import { RoundTripCheck } from '@/components/round-trip-check';
@@ -60,21 +61,39 @@ export default function VaultPage() {
         </div>
       </div>
 
-      <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-        {ALL_DEFINITIONS.map((definition) => (
-          <li key={definition.slug}>
-            <Link
-              href={`/${definition.slug}`}
-              className="block min-h-[var(--spacing-touch)] rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition hover:border-[var(--color-accent)]"
-            >
-              <p className="font-semibold">{definition.plural}</p>
-              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-                {definition.emptyMessage}
-              </p>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Grouped rather than a flat wall of cards: thirteen sections in one
+          list is something you scan past, not something you read. */}
+      <div className="mt-8 grid gap-8">
+        {HOME_GROUPS.map((group) => {
+          const sections = ALL_DEFINITIONS.filter(
+            (definition) => definition.homeGroup === group.id,
+          );
+          if (sections.length === 0) return null;
+
+          return (
+            <section key={group.id}>
+              <h2 className="text-sm font-semibold tracking-wide text-[var(--color-ink-soft)] uppercase">
+                {group.title}
+              </h2>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {sections.map((definition) => (
+                  <li key={definition.slug}>
+                    <Link
+                      href={`/${definition.slug}`}
+                      className="block min-h-[var(--spacing-touch)] rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition hover:border-[var(--color-accent)]"
+                    >
+                      <p className="font-semibold">{definition.plural}</p>
+                      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+                        {definition.emptyMessage}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
 
       <div className="mt-8 grid gap-6">
         <Callout title="Everything here is encrypted before it leaves this device">

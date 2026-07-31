@@ -113,6 +113,12 @@ export interface RecordDefinition {
   /** Collections shown beneath this record's own form. */
   children?: ChildSection[];
 
+  /**
+   * Which cluster this appears under on the vault home screen. Thirteen flat
+   * cards is a wall; four headings with three cards each is a menu.
+   */
+  homeGroup?: HomeGroup;
+
   /** Columns to select for the list view. Derived, but overridable. */
   listColumns?: string[];
 }
@@ -125,6 +131,15 @@ export interface RecordDefinition {
  * the same field specs, sealing, and autosave as anything else. Only the way it
  * is listed and created differs.
  */
+export type HomeGroup = 'family' | 'home' | 'money' | 'life';
+
+export const HOME_GROUPS: { id: HomeGroup; title: string }[] = [
+  { id: 'family', title: 'Your family' },
+  { id: 'home', title: 'Your home' },
+  { id: 'money', title: 'Money' },
+  { id: 'life', title: 'Everything else' },
+];
+
 export interface ChildSection {
   definition: RecordDefinition;
   title: string;
