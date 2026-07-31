@@ -1,0 +1,53 @@
+# Supabase project configuration.
+#
+# Required by the GitHub integration and by the CLI. Set `project_id` to your
+# project's reference — the string in your dashboard URL,
+# https://supabase.com/dashboard/project/<project_id>.
+
+project_id = "your-project-ref"
+
+[api]
+enabled = true
+port = 54321
+# Only `public` is exposed. `app` holds the row-level security predicates and
+# must stay unreachable from PostgREST.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.migrations]
+enabled = true
+
+[auth]
+enabled = true
+
+# Where the magic link sends people back to. Change to your real domain before
+# deploying; a link that redirects somewhere not on this list is rejected, which
+# is the point.
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "https://familygatekeeper.com/**",
+]
+
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# No passwords anywhere in this product. The only account credential is a link
+# in your inbox; the passphrase that decrypts the vault never reaches the
+# server, and having two secrets is how users end up making them identical.
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+
+[analytics]
+enabled = false

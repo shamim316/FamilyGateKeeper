@@ -20,9 +20,9 @@ insert into auth.users (id, email) values
   ('22222222-2222-2222-2222-222222222222', 'sam@example.com'),
   ('33333333-3333-3333-3333-333333333333', 'nosy@example.com');
 
-grant usage on schema public to authenticated;
-grant select, insert, update, delete on all tables in schema public to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+-- Deliberately no grants here. 0005_api_grants.sql is responsible for them, and
+-- granting again would hide the case where that migration is wrong or missing —
+-- which is exactly how this went unnoticed until a real project was connected.
 
 create or replace function pg_temp.act_as(user_id text)
 returns void language sql as $$
@@ -313,6 +313,21 @@ select pg_temp.check(
   (select relrowsecurity and not relforcerowsecurity
      from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relname = 'family_members'));
+
+-- Policies are moot if the role cannot address the table in the first place.
+select pg_temp.check(
+  'the application role can reach every table',
+  (select count(*) = 0 from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r', 'v')
+      and not has_table_privilege('authenticated', c.oid, 'SELECT')));
+
+select pg_temp.check(
+  'no table is reachable without signing in',
+  (select count(*) = 0 from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r', 'v')
+      and has_table_privilege('anon', c.oid, 'SELECT')));
 
 select pg_temp.check(
   'every table in public has at least one policy',
