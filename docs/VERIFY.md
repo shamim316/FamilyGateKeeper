@@ -84,18 +84,31 @@ Without these the magic link bounces and you never reach `/auth/callback`.
 
 ---
 
-## 4. Preflight
+## 4. Check the project
+
+Two ways, depending on whether you want to install anything.
+
+### Nothing installed — the SQL editor
+
+Open **SQL Editor** in the Supabase dashboard, paste the whole of
+[`supabase/tests/health-check.sql`](../supabase/tests/health-check.sql), and run
+it. Thirteen rows come back, each `ok` or `FAIL`, naming the migration to apply
+when something is missing. It is read-only.
+
+This covers the schema, the row-level security, and the grants — the parts most
+likely to be wrong, and the parts that found the bug below.
+
+### With Node — the full preflight
 
 ```bash
 npm install
 npm run preflight
 ```
 
-This checks the environment, that the project answers, that every table exists,
-that the API role can read them, and that an anonymous request sees nothing. It
-tells you which migration is missing if one is.
+Everything the SQL check does, plus the environment file, that the project
+answers over HTTPS, and that an anonymous REST request sees nothing.
 
-Do not continue until it says **Ready**.
+Either way, do not continue until it is clean.
 
 ---
 
