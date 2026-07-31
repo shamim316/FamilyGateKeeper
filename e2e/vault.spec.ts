@@ -84,4 +84,52 @@ test.describe('the vault, end to end', () => {
     await page.getByRole('button', { name: 'Unlock' }).click();
     await expect(page.getByText('Unlocked')).toBeVisible({ timeout: 30_000 });
   });
+
+  test('adds a contact and keeps its account number encrypted', async ({ page }) => {
+    const passphrase = `e2e passphrase ${Date.now()}`;
+
+    await page.goto('/setup');
+    await page.getByLabel(/what should we call your family/i).fill('E2E Family');
+    await page.getByLabel('Choose a passphrase').fill(passphrase);
+    await page.getByLabel('Type it once more').fill(passphrase);
+    await page.getByRole('button', { name: /create my vault/i }).click();
+
+    await expect(page.getByText(/only other way into your vault/i)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const challengeLabel = await page.getByText(/Type the \w+ group/).textContent();
+    const ordinals = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+    const index = ordinals.findIndex((ordinal) => challengeLabel?.includes(ordinal));
+    const codeText = (await page.locator('p.font-mono').first().textContent()) ?? '';
+    const groups = codeText.replace('FGK1-', '').trim().split('-');
+
+    await page.getByLabel(/saved this code somewhere safe/i).check();
+    await page.getByRole('textbox').fill(groups[index]);
+    await page.getByRole('button', { name: /open my vault/i }).click();
+    await expect(page.getByText('Unlocked')).toBeVisible();
+
+    // Into Contacts, and add one.
+    await page.getByRole('link', { name: /^Contacts/ }).click();
+    await page.getByRole('button', { name: /add your first contact/i }).click();
+
+    // Autosave: type, then move on. There is no save button to press.
+    await page.getByLabel('Name').fill('Riverside Plumbing');
+    await page.getByLabel(/what are they/i).fill('Plumber');
+    await page.getByRole('button', { name: /add more details/i }).click();
+    await page.getByLabel(/^Account number/).fill('000123456789');
+    await page.getByLabel('Name').click();
+
+    await expect(page.getByText('Saved')).toBeVisible({ timeout: 15_000 });
+
+    // The list shows the masked hint without decrypting anything.
+    await page.getByRole('link', { name: /^Contacts/ }).click();
+    await expect(page.getByText('Riverside Plumbing')).toBeVisible();
+    await expect(page.getByText(/••••6789/)).toBeVisible();
+
+    // Reopening decrypts it again.
+    await page.getByText('Riverside Plumbing').click();
+    await page.getByRole('button', { name: /add more details/i }).click();
+    await expect(page.getByLabel(/^Account number/)).toHaveValue('000123456789');
+  });
 });

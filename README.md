@@ -18,9 +18,11 @@ Built so far:
 - Client-side encryption core with test coverage (`src/lib/crypto/`)
 - The vault shell (`src/lib/vault/`, `src/app/`) — magic-link sign-in, family creation, the
   recovery-kit ceremony, unlock, recovery, and auto-lock
+- The record layer (`src/lib/records/`) — a record type is a declaration, not a screen. Contacts,
+  Insurance, and Money all run on it, with autosave and no save buttons.
 - Next.js app scaffold and Docker build for Easypanel
 
-Next up: the record screens — household members, home, and vehicles.
+Next up: household members, home, and vehicles.
 
 ## Stack
 

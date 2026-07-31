@@ -412,13 +412,26 @@ Ten milestones. Each ends in something deployable and testable.
    other device and member key work lives. And sign-in is magic-link only: an account password
    alongside a vault passphrase means two secrets, which users make identical, which quietly
    collapses the security model.
-4. **Generic tables & UI kit** — `contacts`, `policies`, `financial_accounts`, `attachments`, plus
-   the shared record-list, record-detail, autosave-form, and masked-secret components. Everything
-   after this is composition.
+4. **Generic tables & UI kit** — ✅ *done.* `contacts`, `policies`, and `financial_accounts`, with
+   the shared record list, detail form, autosave, and masked-secret components.
+
+   It went further than "shared components": a record type is now a **declaration**, not a screen.
+   A `RecordDefinition` names the table, marks which fields are secret, and labels each one; from
+   that, the list, the form, the encryption, the database mapping, and the route all follow. All
+   three categories share one pair of routes (`/[slug]` and `/[slug]/[id]`), so the remaining
+   categories in Milestone 6 are definitions rather than screens.
+
+   Marking a field `secret` is the only thing a definition has to get right, and it is the one
+   thing a form cannot override — sealing happens in the repository, below every screen.
+
+   `attachments` slipped to Milestone 6, where document upload belongs alongside the categories
+   that need it.
 5. **Core categories** — Household Members, House (with appliances and finishes), Vehicles (with
    service log). The three heaviest sections; they exercise the whole pattern.
-6. **Remaining categories** — Health, Finances, Education, Communication, Pets, Subscriptions,
-   Estate & Legal, Documents, Valuables, Memberships, Travel.
+6. **Remaining categories** — Health, Education, Communication, Pets, Subscriptions, Estate &
+   Legal, Documents, Valuables, Memberships, Travel. Mostly definitions now, plus `attachments`
+   and the child-record pattern (service logs, health facts) that the definition layer does not
+   yet cover.
 7. **Reminders & renewals** — `expires_on` indexing, dashboard, Supabase scheduled function, email
    via Resend, `last_verified_at` nudges.
 8. **Emergency mode & print** — break-glass screen, offline cache, single-page printable sheet.

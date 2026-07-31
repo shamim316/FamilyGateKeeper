@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ALL_DEFINITIONS } from '@/lib/records/definitions';
 import { useVault } from '@/lib/vault/vault-provider';
 import { createClient } from '@/lib/supabase/client';
 import { RoundTripCheck } from '@/components/round-trip-check';
@@ -58,16 +60,32 @@ export default function VaultPage() {
         </div>
       </div>
 
+      <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+        {ALL_DEFINITIONS.map((definition) => (
+          <li key={definition.slug}>
+            <Link
+              href={`/${definition.slug}`}
+              className="block min-h-[var(--spacing-touch)] rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition hover:border-[var(--color-accent)]"
+            >
+              <p className="font-semibold">{definition.plural}</p>
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+                {definition.emptyMessage}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
       <div className="mt-8 grid gap-6">
-        <Callout title="The vault shell is working">
-          Your passphrase unwrapped the key that decrypts your information, and it is held in memory
-          only. Closing this tab or leaving it idle for fifteen minutes locks it again.
+        <Callout title="Everything here is encrypted before it leaves this device">
+          Your passphrase unwrapped the key, and it is held in memory only. Closing this tab or
+          leaving it idle for fifteen minutes locks it again.
         </Callout>
 
         <RoundTripCheck dek={state.dek} familyId={state.familyId} />
 
         <p className="text-sm text-[var(--color-ink-soft)]">
-          Next: the record screens — household members, home, and vehicles.
+          Next: household members, home, and vehicles.
         </p>
       </div>
     </Screen>
