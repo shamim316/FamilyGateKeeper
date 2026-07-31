@@ -16,7 +16,7 @@
 import { x25519 } from '@noble/curves/ed25519';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { fromBase64Url, toBase64Url, utf8ToBytes, wipe } from './bytes';
+import { asBytes, fromBase64Url, toBase64Url, utf8ToBytes, wipe, type Bytes } from './bytes';
 import { sealBytes, openBytes, type SealedEnvelope } from './envelope';
 
 const HKDF_INFO = 'fgk/v1/sealed-box';
@@ -47,14 +47,14 @@ export function generateKeyPair(): KeyPairMaterial {
 }
 
 async function deriveSharedKey(
-  privateKey: Uint8Array,
-  peerPublicKey: Uint8Array,
+  privateKey: Bytes,
+  peerPublicKey: Bytes,
   context: string,
 ): Promise<CryptoKey> {
   const shared = x25519.getSharedSecret(privateKey, peerPublicKey);
   // Salt is empty by design: the ECDH output already has full entropy, and the
   // context string in `info` is what separates one use of this from another.
-  const raw = hkdf(sha256, shared, undefined, utf8ToBytes(`${HKDF_INFO}/${context}`), 32);
+  const raw = asBytes(hkdf(sha256, shared, undefined, utf8ToBytes(`${HKDF_INFO}/${context}`), 32));
   wipe(shared);
 
   const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, [
@@ -68,10 +68,10 @@ async function deriveSharedKey(
 /** Seals bytes so that only the holder of `recipientPublicKey` can open them. */
 export async function sealFor(
   recipientPublicKey: string,
-  plaintext: Uint8Array,
+  plaintext: Bytes,
   context: string,
 ): Promise<SealedBox> {
-  const ephemeralPrivate = x25519.utils.randomPrivateKey();
+  const ephemeralPrivate = asBytes(x25519.utils.randomPrivateKey());
   const ephemeralPublic = x25519.getPublicKey(ephemeralPrivate);
 
   const key = await deriveSharedKey(ephemeralPrivate, fromBase64Url(recipientPublicKey), context);
@@ -85,7 +85,7 @@ export async function openSealed(
   recipientPrivateKey: string,
   box: SealedBox,
   context: string,
-): Promise<Uint8Array> {
+): Promise<Bytes> {
   const privateKey = fromBase64Url(recipientPrivateKey);
   const key = await deriveSharedKey(privateKey, fromBase64Url(box.epk), context);
   wipe(privateKey);

@@ -8,16 +8,20 @@
 # level security, so running these as `postgres` would quietly pass even if the
 # policies were recursive or wide open.
 #
-# Usage: supabase/tests/run.sh [socket-dir] [port]
+# Usage: supabase/tests/run.sh [host] [port]
+#
+# `host` may be a hostname or a Unix socket directory, e.g.
+#   supabase/tests/run.sh localhost 5432
+#   supabase/tests/run.sh /var/run/postgresql 5432
 
 set -euo pipefail
 
-SOCKET_DIR="${1:-/tmp/fgkpg/run}"
+HOST="${1:-/tmp/fgkpg/run}"
 PORT="${2:-5433}"
 DB="fgk_test_$$"
 OWNER="fgk_test_owner"
 
-export PGHOST="$SOCKET_DIR"
+export PGHOST="$HOST"
 export PGPORT="$PORT"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

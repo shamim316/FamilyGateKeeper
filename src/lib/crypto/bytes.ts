@@ -8,8 +8,24 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export function utf8ToBytes(text: string): Uint8Array {
-  return encoder.encode(text);
+/**
+ * A Uint8Array backed by a plain ArrayBuffer rather than a SharedArrayBuffer.
+ *
+ * WebCrypto refuses shared buffers — a concurrently mutable input would defeat
+ * AES-GCM's integrity guarantee — and since TypeScript 5.7 that restriction is
+ * expressed in the type. Everything here allocates its own buffer, so the
+ * narrowing is accurate; it just is not inferable from `TextEncoder.encode`
+ * and the noble hash functions, whose signatures stay deliberately loose.
+ */
+export type Bytes = Uint8Array<ArrayBuffer>;
+
+/** Narrows byte output that is known to own a plain ArrayBuffer. */
+export function asBytes(bytes: Uint8Array): Bytes {
+  return bytes as Bytes;
+}
+
+export function utf8ToBytes(text: string): Bytes {
+  return asBytes(encoder.encode(text));
 }
 
 export function bytesToUtf8(bytes: Uint8Array): string {
@@ -24,7 +40,7 @@ export function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function fromBase64Url(value: string): Uint8Array {
+export function fromBase64Url(value: string): Bytes {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(padded.padEnd(Math.ceil(padded.length / 4) * 4, '='));
   const bytes = new Uint8Array(binary.length);
@@ -34,7 +50,7 @@ export function fromBase64Url(value: string): Uint8Array {
   return bytes;
 }
 
-export function randomBytes(length: number): Uint8Array {
+export function randomBytes(length: number): Bytes {
   return crypto.getRandomValues(new Uint8Array(length));
 }
 

@@ -14,7 +14,7 @@
  */
 
 import { sealBytes, openBytes, type SealedEnvelope } from './envelope';
-import { randomBytes, wipe } from './bytes';
+import { randomBytes, wipe, type Bytes } from './bytes';
 
 const KEY_LENGTH_BYTES = 32;
 
@@ -28,7 +28,7 @@ export interface WrappedKey {
   via: 'passphrase' | 'recovery-code' | 'device' | 'member-public-key';
 }
 
-async function importAesKey(raw: Uint8Array, extractable: boolean): Promise<CryptoKey> {
+async function importAesKey(raw: Bytes, extractable: boolean): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, extractable, [
     'encrypt',
     'decrypt',
@@ -42,7 +42,7 @@ async function importAesKey(raw: Uint8Array, extractable: boolean): Promise<Cryp
  * under several credentials before it can forget the material. Callers must
  * `wipe()` the raw bytes once every wrapping is done.
  */
-export async function generateDek(): Promise<{ key: CryptoKey; raw: Uint8Array }> {
+export async function generateDek(): Promise<{ key: CryptoKey; raw: Bytes }> {
   const raw = randomBytes(KEY_LENGTH_BYTES);
   const key = await importAesKey(raw, false);
   return { key, raw };
@@ -51,7 +51,7 @@ export async function generateDek(): Promise<{ key: CryptoKey; raw: Uint8Array }
 /** Wraps raw DEK bytes under a key-encryption key. */
 export async function wrapDek(
   kek: CryptoKey,
-  dekRaw: Uint8Array,
+  dekRaw: Bytes,
   via: WrappedKey['via'],
 ): Promise<WrappedKey> {
   return { envelope: await sealBytes(kek, dekRaw, DEK_CONTEXT), via };
@@ -69,7 +69,7 @@ export async function unwrapDek(
   kek: CryptoKey,
   wrapped: WrappedKey,
   options: { extractable?: boolean } = {},
-): Promise<{ key: CryptoKey; raw?: Uint8Array }> {
+): Promise<{ key: CryptoKey; raw?: Bytes }> {
   const raw = await openBytes(kek, wrapped.envelope);
   const extractable = options.extractable ?? false;
   const key = await importAesKey(raw, extractable);
@@ -96,7 +96,7 @@ export async function unwrapCek(
   dek: CryptoKey,
   wrapped: SealedEnvelope,
   options: { extractable?: boolean } = {},
-): Promise<{ key: CryptoKey; raw?: Uint8Array }> {
+): Promise<{ key: CryptoKey; raw?: Bytes }> {
   const raw = await openBytes(dek, wrapped);
   const extractable = options.extractable ?? false;
   const key = await importAesKey(raw, extractable);
@@ -114,7 +114,7 @@ export async function unwrapCek(
  * so nothing already encrypted has to be touched.
  */
 export async function addDekWrapping(
-  dekRaw: Uint8Array,
+  dekRaw: Bytes,
   newKek: CryptoKey,
   via: WrappedKey['via'],
 ): Promise<WrappedKey> {

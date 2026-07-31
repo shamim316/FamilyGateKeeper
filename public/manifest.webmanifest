@@ -1,0 +1,18 @@
+{
+  "name": "Family Gate Keeper",
+  "short_name": "Gate Keeper",
+  "description": "Your family's important information, in one place you can actually find.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fcfcfd",
+  "theme_color": "#2b6cb0",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
  * decrypt data the server cannot read.
  */
 
-import { fromBase64Url, randomBytes, toBase64Url, utf8ToBytes, bytesToUtf8 } from './bytes';
+import { asBytes, fromBase64Url, randomBytes, toBase64Url, utf8ToBytes, bytesToUtf8, type Bytes } from './bytes';
 
 export const ENVELOPE_VERSION = 1 as const;
 const IV_LENGTH = 12; // AES-GCM standard nonce length
@@ -103,7 +103,7 @@ export async function open(key: CryptoKey, envelope: SealedEnvelope): Promise<st
 /** Seals raw bytes rather than a string, for wrapped keys and file contents. */
 export async function sealBytes(
   key: CryptoKey,
-  plaintext: Uint8Array,
+  plaintext: Bytes,
   aad?: string,
 ): Promise<SealedEnvelope> {
   const iv = randomBytes(IV_LENGTH);
@@ -124,7 +124,7 @@ export async function sealBytes(
 export async function openBytes(
   key: CryptoKey,
   envelope: SealedEnvelope,
-): Promise<Uint8Array> {
+): Promise<Bytes> {
   if (!isSealedEnvelope(envelope)) {
     throw new EnvelopeError('Not a sealed envelope');
   }
@@ -137,7 +137,7 @@ export async function openBytes(
   }
   try {
     const plaintext = await crypto.subtle.decrypt(params, key, fromBase64Url(envelope.ct));
-    return new Uint8Array(plaintext);
+    return asBytes(new Uint8Array(plaintext));
   } catch {
     throw new EnvelopeError('Could not decrypt — wrong key or altered data');
   }

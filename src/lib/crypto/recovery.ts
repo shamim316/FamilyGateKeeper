@@ -12,7 +12,7 @@
 
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { randomBytes, utf8ToBytes, wipe } from './bytes';
+import { asBytes, randomBytes, utf8ToBytes, wipe, type Bytes } from './bytes';
 
 /**
  * Crockford base32: no I, L, O, or U. Removes the 1/l and 0/O confusions that
@@ -72,13 +72,13 @@ export function isPlausibleRecoveryCode(input: string): boolean {
  * The salt is stored in the clear next to the wrapped key; it exists to keep
  * two families with (impossibly) the same code from producing the same KEK.
  */
-export async function deriveRecoveryKek(code: string, salt: Uint8Array): Promise<CryptoKey> {
+export async function deriveRecoveryKek(code: string, salt: Bytes): Promise<CryptoKey> {
   const body = normalizeRecoveryCode(code);
   if (body.length !== GROUP_SIZE * GROUP_COUNT) {
     throw new Error('Recovery code is not the right length');
   }
 
-  const raw = hkdf(sha256, utf8ToBytes(body), salt, utf8ToBytes(HKDF_INFO), 32);
+  const raw = asBytes(hkdf(sha256, utf8ToBytes(body), salt, utf8ToBytes(HKDF_INFO), 32));
   const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, [
     'encrypt',
     'decrypt',

@@ -8,7 +8,7 @@
  */
 
 import { argon2id } from '@noble/hashes/argon2';
-import { randomBytes, utf8ToBytes, toBase64Url, fromBase64Url } from './bytes';
+import { asBytes, randomBytes, utf8ToBytes, toBase64Url, fromBase64Url } from './bytes';
 
 export interface KdfParams {
   alg: 'argon2id';
@@ -55,12 +55,14 @@ export async function deriveKek(passphrase: string, params: KdfParams): Promise<
     throw new Error(`Unsupported KDF algorithm: ${params.alg}`);
   }
 
-  const raw = argon2id(utf8ToBytes(passphrase.normalize('NFKC')), fromBase64Url(params.salt), {
-    m: params.m,
-    t: params.t,
-    p: params.p,
-    dkLen: 32,
-  });
+  const raw = asBytes(
+    argon2id(utf8ToBytes(passphrase.normalize('NFKC')), fromBase64Url(params.salt), {
+      m: params.m,
+      t: params.t,
+      p: params.p,
+      dkLen: 32,
+    }),
+  );
 
   // The KEK only ever wraps and unwraps other keys, and must not be exportable.
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, [
