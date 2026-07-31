@@ -193,11 +193,24 @@ Go to `/vault` → **Contacts** → *Add your first contact*.
   digits — rendered without decrypting anything.
 - Open it again. The account number is there in full.
 
-Now the part that proves the whole design:
+Now the part that proves the whole design. Either look at **Table Editor →
+contacts** in the dashboard, or — better — run
+[`supabase/tests/encryption-audit.sql`](../supabase/tests/encryption-audit.sql)
+in the SQL editor:
 
-- Open **Table Editor → contacts** in the dashboard. Your name is readable; the
-  account number is an envelope. **You cannot read your own users' secrets, and
-  neither can anyone who steals this database.**
+```
+what                          status   rows  what is actually stored
+Secret columns in the schema   29 columns can hold a secret; 2 currently do
+contacts.account_number        sealed      1  {"v":1,"ct":"dGhpcy1pcy…","alg":"A256GCM"}
+household_members.ssn          sealed      1  {"v":1,"ct":"c3NuLWNpcGhl…","alg":"A256GCM"}
+Plaintext is rejected          yes — the app.sealed domain refuses anything else
+Readable on purpose            contact names     1  Riverside Plumbing
+Readable on purpose            masked hints      1  ••••6789
+```
+
+It finds every secret column by itself, so it stays accurate as the schema
+grows. **You cannot read your own users' secrets, and neither can anyone who
+steals this database.**
 
 Finally, the lock:
 
