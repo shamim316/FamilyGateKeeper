@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { readPublicConfigFromEnv } from './public-config';
 
 /** Routes reachable without a session. Everything else needs one. */
 const PUBLIC_PATHS = ['/', '/signin', '/auth'];
@@ -19,15 +20,13 @@ function isPublic(pathname: string): boolean {
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
   // Without configuration there is no session to refresh and nothing to guard.
   // Failing open here keeps a misconfigured deploy showing its landing page
   // rather than an infinite redirect.
-  if (!url || !anonKey) return response;
+  const config = readPublicConfigFromEnv();
+  if (!config) return response;
 
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(config.supabaseUrl, config.supabaseAnonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

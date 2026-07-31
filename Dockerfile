@@ -1,4 +1,11 @@
-# Easypanel builds this image directly from the repo.
+# Built by Easypanel straight from the repo.
+#
+# Deliberately takes no build arguments. The Supabase settings are read from the
+# environment at request time (see src/lib/supabase/public-config.ts), so this
+# image carries no configuration and the same one runs anywhere. Setting a
+# variable in the host's environment tab is enough; nothing needs rebuilding to
+# change a key.
+
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -8,10 +15,6 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Public env vars are inlined at build time, so they must be present here.
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

@@ -35,11 +35,18 @@ Next up: connecting a Supabase project, then encrypted document upload and renew
 | Deploy | Docker (`output: 'standalone'`) on Easypanel |
 | Tests | Vitest (unit + crypto), Playwright (end-to-end) |
 
+## Deploying
+
+[`docs/DEPLOY-EASYPANEL.md`](docs/DEPLOY-EASYPANEL.md) walks through Easypanel and a custom domain.
+
+The image takes no build arguments: Supabase settings are read from the environment at request
+time, so the same image runs anywhere and rotating a key needs no rebuild.
+
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in your Supabase keys
+cp .env.example .env.local   # SUPABASE_URL and SUPABASE_ANON_KEY
 npm run dev
 ```
 

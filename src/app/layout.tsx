@@ -1,5 +1,14 @@
 import type { Metadata, Viewport } from 'next';
+import { configScript, readPublicConfigFromEnv } from '@/lib/supabase/public-config';
 import './globals.css';
+
+/**
+ * Rendered per request so the Supabase settings below come from the running
+ * container's environment rather than whatever was present when the image was
+ * built. That is what lets the same image move between environments, and what
+ * makes a host's environment tab actually work.
+ */
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Family Gate Keeper',
@@ -23,8 +32,19 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const config = readPublicConfigFromEnv();
+
   return (
     <html lang="en">
+      <head>
+        {/* The anon key is public by design — it ships in every Supabase app's
+            client bundle, and row-level security is what protects the data.
+            The service-role key never appears here. */}
+        <script
+          id="fgk-config"
+          dangerouslySetInnerHTML={{ __html: configScript(config) }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

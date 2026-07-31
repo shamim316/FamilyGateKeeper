@@ -29,10 +29,10 @@ enabled = true
 # Where the magic link sends people back to. Change to your real domain before
 # deploying; a link that redirects somewhere not on this list is rejected, which
 # is the point.
-site_url = "http://localhost:3000"
+site_url = "https://keeper.akhtar.app"
 additional_redirect_urls = [
+  "https://keeper.akhtar.app/**",
   "http://localhost:3000/**",
-  "https://familygatekeeper.com/**",
 ]
 
 jwt_expiry = 3600

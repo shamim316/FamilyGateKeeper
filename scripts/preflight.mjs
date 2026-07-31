@@ -67,31 +67,32 @@ loadEnv();
 
 heading('Configuration');
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Unprefixed names are what production uses; the NEXT_PUBLIC_ ones still work.
+const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!existsSync(join(root, '.env.local'))) {
   fail(
     '.env.local is missing',
-    'cp .env.example .env.local, then fill in the two NEXT_PUBLIC_SUPABASE values\n' +
+    'cp .env.example .env.local, then fill in SUPABASE_URL and SUPABASE_ANON_KEY\n' +
       'from Supabase → Project Settings → API.',
   );
 }
 
 if (!url) {
-  fail('NEXT_PUBLIC_SUPABASE_URL is not set', 'Supabase → Project Settings → API → Project URL');
+  fail('SUPABASE_URL is not set', 'Supabase → Project Settings → API → Project URL');
 } else if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/.test(url)) {
-  warn(`NEXT_PUBLIC_SUPABASE_URL looks unusual: ${url}`, 'Expected https://<ref>.supabase.co');
+  warn(`SUPABASE_URL looks unusual: ${url}`, 'Expected https://<ref>.supabase.co');
 } else {
-  ok('NEXT_PUBLIC_SUPABASE_URL', url);
+  ok('SUPABASE_URL', url);
 }
 
 if (!anonKey) {
-  fail('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set', 'Supabase → Project Settings → API → anon key');
+  fail('SUPABASE_ANON_KEY is not set', 'Supabase → Project Settings → API → anon key');
 } else if (anonKey.length < 40) {
-  fail('NEXT_PUBLIC_SUPABASE_ANON_KEY looks too short to be a real key');
+  fail('SUPABASE_ANON_KEY looks too short to be a real key');
 } else {
-  ok('NEXT_PUBLIC_SUPABASE_ANON_KEY', `${anonKey.slice(0, 12)}…`);
+  ok('SUPABASE_ANON_KEY', `${anonKey.slice(0, 12)}…`);
 }
 
 // The service role key bypasses row-level security. It must never be readable
