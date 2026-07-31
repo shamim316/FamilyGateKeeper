@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 const CATEGORIES = [
   { name: 'Household', detail: 'People, IDs, and the dates they expire' },
   { name: 'Home', detail: 'Utilities, appliances, paint colours, shutoffs' },
@@ -26,6 +28,21 @@ export default function Home() {
         registration expires, the dog&rsquo;s microchip number. The things you need once a year and
         need badly.
       </p>
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link
+          href="/signin"
+          className="inline-flex min-h-[var(--spacing-touch)] items-center justify-center rounded-[var(--radius-card)] bg-[var(--color-accent)] px-6 font-semibold text-white transition hover:opacity-90"
+        >
+          Get started
+        </Link>
+        <Link
+          href="/signin"
+          className="inline-flex min-h-[var(--spacing-touch)] items-center justify-center rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 font-semibold transition hover:border-[var(--color-accent)]"
+        >
+          Sign in
+        </Link>
+      </div>
 
       <div className="mt-8 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-accent-soft)] p-5">
         <h2 className="font-semibold">Your secrets stay yours</h2>

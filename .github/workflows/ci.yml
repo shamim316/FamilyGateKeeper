@@ -19,10 +19,23 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # No Supabase configuration on purpose. Nothing should need a reachable
+      # backend to render, and a build that breaks without one would break the
+      # prerender pass in production too.
       - run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-time-placeholder
+
+      - name: Check the crypto engine stayed out of the page bundles
+        run: |
+          leaked=$(grep -rl 'argon2id' .next/static/chunks --include='*.js' \
+            | grep -v 'fgk-crypto' || true)
+          if [ -n "$leaked" ]; then
+            echo "Argon2id reached the main thread bundle:"
+            echo "$leaked"
+            echo "It belongs only in the crypto worker chunk — check for a value"
+            echo "import that pulls src/lib/crypto/engine.ts into a page."
+            exit 1
+          fi
+          echo "Argon2id is confined to the worker chunk."
 
   database:
     name: Schema and row-level security

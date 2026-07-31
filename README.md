@@ -16,7 +16,11 @@ Built so far:
 
 - Full Postgres schema with row-level security on every table (`supabase/migrations/`)
 - Client-side encryption core with test coverage (`src/lib/crypto/`)
+- The vault shell (`src/lib/vault/`, `src/app/`) — magic-link sign-in, family creation, the
+  recovery-kit ceremony, unlock, recovery, and auto-lock
 - Next.js app scaffold and Docker build for Easypanel
+
+Next up: the record screens — household members, home, and vehicles.
 
 ## Stack
 
@@ -49,8 +53,10 @@ supabase db push
 |---|---|
 | `npm run dev` | Development server on :3000 |
 | `npm run build` | Production build (standalone output) |
-| `npm test` | Vitest unit and crypto suites |
+| `npm test` | Vitest — crypto, ceremonies, session, and component suites |
 | `npm run test:watch` | Vitest in watch mode |
+| `npm run test:db` | Applies the migrations to a throwaway database and runs the RLS suite |
+| `npm run test:e2e` | Playwright. Skips itself unless a live Supabase project is configured |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -69,4 +75,8 @@ Keys are layered: a passphrase-derived KEK unwraps a per-family DEK, which unwra
 which decrypts the field. The DEK is independently wrapped by a printable recovery code, so losing a
 passphrase is survivable — losing both is not, and onboarding says so plainly.
 
-See `src/lib/crypto/README.md` for the details.
+Argon2id runs in a Web Worker. That keeps a one-to-three second derivation off the main thread, and
+it means the passphrase and raw key bytes never exist there at all: what comes back is a
+non-extractable `CryptoKey` the page can use but cannot read.
+
+See `src/lib/crypto/README.md` for the threat model, including what this does *not* protect against.

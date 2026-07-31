@@ -403,8 +403,15 @@ Ten milestones. Each ends in something deployable and testable.
    `family_members` / auth, RLS helper and policy template, Dockerfile, Easypanel deploy, CI.
 2. **Crypto core** — `lib/crypto/` with Argon2id KDF, AES-GCM seal/open, DEK/CEK wrapping, recovery
    code generation, X25519 envelopes. Heavy unit tests. No UI yet.
-3. **Vault shell** — signup with passphrase, recovery-kit screen with forced acknowledgement, unlock
-   and auto-lock, passkey quick-unlock, in-memory key management.
+3. **Vault shell** — ✅ *done.* Magic-link sign-in, family creation, the recovery-kit ceremony
+   (print, download, checkbox, and a typed-back group), unlock, recovery, passphrase change, and
+   auto-lock with cross-tab locking. Argon2id runs in a Web Worker, so raw key bytes and the
+   passphrase never reach the main thread.
+
+   Two changes from the original sketch. Passkey quick-unlock moved to Milestone 10, where the
+   other device and member key work lives. And sign-in is magic-link only: an account password
+   alongside a vault passphrase means two secrets, which users make identical, which quietly
+   collapses the security model.
 4. **Generic tables & UI kit** — `contacts`, `policies`, `financial_accounts`, `attachments`, plus
    the shared record-list, record-detail, autosave-form, and masked-secret components. Everything
    after this is composition.
@@ -418,7 +425,8 @@ Ten milestones. Each ends in something deployable and testable.
 9. **Onboarding & polish** — setup wizard, completeness meters, empty states, PWA manifest and
    service worker, accessibility pass.
 10. **Paid features** — Stripe billing, member invitations with DEK re-wrapping, encrypted export
-    and offline backup, cross-family sharing with CEK re-wrapping, audit log.
+    and offline backup, cross-family sharing with CEK re-wrapping, audit log, and passkey
+    quick-unlock via the WebAuthn PRF extension.
 
 Milestones 1–4 are the ones worth slowing down on. The encryption and RLS foundations are the parts
 that are painful to change once real family data exists.

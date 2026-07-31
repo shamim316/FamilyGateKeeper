@@ -71,28 +71,4 @@ export async function deriveKek(passphrase: string, params: KdfParams): Promise<
   ]);
 }
 
-/**
- * Rough strength signal for the passphrase field during signup. Deliberately
- * not a hard gate: blocking a determined user produces a passphrase on a
- * sticky note, which is worse than a mediocre one they remember.
- */
-export function passphraseStrength(passphrase: string): {
-  score: 0 | 1 | 2 | 3 | 4;
-  label: string;
-} {
-  const length = passphrase.length;
-  let variety = 0;
-  if (/[a-z]/.test(passphrase)) variety += 1;
-  if (/[A-Z]/.test(passphrase)) variety += 1;
-  if (/[0-9]/.test(passphrase)) variety += 1;
-  if (/[^a-zA-Z0-9]/.test(passphrase)) variety += 1;
-
-  let score: 0 | 1 | 2 | 3 | 4 = 0;
-  if (length >= 8) score = 1;
-  if (length >= 12 && variety >= 2) score = 2;
-  if (length >= 16 && variety >= 2) score = 3;
-  if (length >= 20 || (length >= 16 && variety >= 3)) score = 4;
-
-  const labels = ['Too short', 'Weak', 'Okay', 'Strong', 'Very strong'] as const;
-  return { score, label: labels[score] };
-}
+export { passphraseStrength } from './passphrase-strength';

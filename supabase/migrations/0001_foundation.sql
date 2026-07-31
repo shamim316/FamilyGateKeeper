@@ -184,7 +184,11 @@ grant execute on function app.family_has_no_members(uuid) to authenticated;
 -- ---------------------------------------------------------------------------
 
 -- The X25519 keypair that lets someone receive an invite or a shared record
--- while offline. The private half is sealed under the user's passphrase.
+-- while offline.
+--
+-- The private half is sealed under the family data key, not under the user's
+-- passphrase. Sealing it under the passphrase would orphan it the moment
+-- someone recovers with their code and chooses a new one.
 create table public.user_identities (
   user_id uuid primary key references auth.users (id) on delete cascade,
   public_key text not null,
