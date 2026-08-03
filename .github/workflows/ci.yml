@@ -24,6 +24,23 @@ jobs:
       # prerender pass in production too.
       - run: npm run build
 
+      # Next only picks up middleware beside the app directory. With src/app
+      # that means src/middleware.ts; at the repo root it is silently ignored,
+      # which is how the auth guard and session refresh went missing for three
+      # milestones without a single failing test.
+      - name: Check the middleware is actually registered
+        run: |
+          entries=$(node -e "
+            const m = require('./.next/server/middleware-manifest.json');
+            console.log(Object.keys(m.middleware || {}).length);
+          ")
+          if [ "$entries" = "0" ]; then
+            echo "No middleware registered. It must live at src/middleware.ts,"
+            echo "beside src/app — at the repo root Next ignores it silently."
+            exit 1
+          fi
+          echo "Middleware is registered."
+
       - name: Check the crypto engine stayed out of the page bundles
         run: |
           leaked=$(grep -rl 'argon2id' .next/static/chunks --include='*.js' \

@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { readPublicConfigFromEnv } from './public-config';
+import { siteUrl } from '@/lib/site-url';
 
 /** Routes reachable without a session. Everything else needs one. */
 const PUBLIC_PATHS = ['/', '/signin', '/auth'];
@@ -24,6 +25,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // Failing open here keeps a misconfigured deploy showing its landing page
   // rather than an infinite redirect.
   const config = readPublicConfigFromEnv();
+  response.headers.set('x-debug-config', config ? 'found' : 'MISSING');
+  response.headers.set('x-debug-env-url', String(process.env.SUPABASE_URL ?? 'undefined'));
   if (!config) return response;
 
   const supabase = createServerClient(config.supabaseUrl, config.supabaseAnonKey, {
@@ -50,10 +53,11 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   if (!user && !isPublic(request.nextUrl.pathname)) {
-    const signIn = request.nextUrl.clone();
-    signIn.pathname = '/signin';
-    signIn.searchParams.set('next', request.nextUrl.pathname);
-    return NextResponse.redirect(signIn);
+    // Built from the public origin rather than request.nextUrl, which behind a
+    // proxy is the container's own bind address.
+    const target = new URL(siteUrl(request, '/signin'));
+    target.searchParams.set('next', request.nextUrl.pathname);
+    return NextResponse.redirect(target);
   }
 
   return response;

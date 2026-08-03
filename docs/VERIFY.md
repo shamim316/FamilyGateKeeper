@@ -258,6 +258,21 @@ Storage, which has no stand-in.
 
 ## Known issues found while writing this
 
+**Redirects pointed at the container.** The magic link came back to
+`https://0.0.0.0:3000/vault`. Behind a reverse proxy the container never sees
+the public hostname — `request.url` carries the address it was told to bind to —
+so every redirect built from it was wrong. Redirects now resolve the public
+origin from `SITE_URL`, falling back to the `X-Forwarded-*` headers.
+
+**The middleware had never run.** Next only picks up `middleware.ts` beside the
+`app` directory. This project uses `src/app`, so it had to be
+`src/middleware.ts`; at the repo root it was silently ignored. The auth guard
+and, more consequentially, the Supabase session refresh had been absent since
+they were written, with no failing test and nothing in the build output. CI now
+fails if the middleware manifest is empty.
+
+
+
 **Missing table grants.** The migrations created tables and row-level security
 policies but never granted `authenticated` any privilege on them. Supabase's
 project bootstrap sets default privileges that would have covered it, so this

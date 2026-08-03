@@ -166,6 +166,7 @@ removes rather than manages.
 | "Supabase is not configured" on screen | Same |
 | Certificate will not issue | DNS not propagated, or Cloudflare proxy on. Grey-cloud it, reissue, re-enable |
 | Magic link goes to `localhost` | `Site URL` in Supabase still points at localhost. Step 5 |
+| Redirected to `0.0.0.0:3000` after sign-in | Fixed. Behind a proxy the container only sees its own bind address, so redirects have to come from `SITE_URL` or the `X-Forwarded-*` headers rather than the request. Make sure `SITE_URL` is set |
 | Redirected to `/signin?error=link-expired` | Link opened in a different browser or device, or `keeper.akhtar.app/**` missing from Redirect URLs |
 | `502` from Easypanel | Container not listening. Check the port is `3000` and the log for a crash |
 | Build fails on `npm ci` | `package-lock.json` out of step with `package.json`. Run `npm install` locally and commit the lockfile |
