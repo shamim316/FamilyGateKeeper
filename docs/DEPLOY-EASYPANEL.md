@@ -57,11 +57,13 @@ NODE_ENV=production
 
 Both values come from Supabase → **Project Settings → API**.
 
-> Use the **anon** key, never the **service_role** key. The service role bypasses
-> row-level security entirely — with it in the browser, any visitor could read
-> every family's records. The anon key is meant to be public; it ships in the
-> client bundle of every Supabase app, and the policies are what protect the
-> data.
+> Use the public key — labelled **anon** on older projects and **publishable**
+> (`sb_publishable_…`) on newer ones. Never the **service_role** or **secret**
+> key: those bypass row-level security entirely, and in the browser would let any
+> visitor read every family's records.
+>
+> The public key is meant to be public. It ships in the client bundle of every
+> Supabase app, and the policies are what protect the data.
 
 Nothing else is needed yet. `RESEND_API_KEY` and the Stripe variables belong to
 features that do not exist.

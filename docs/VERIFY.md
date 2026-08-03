@@ -27,8 +27,8 @@ Fill in the two values from **Project Settings → API**:
 
 | Variable | Where |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project API keys → `anon` `public` |
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_ANON_KEY` | Project API keys — the **anon**/**public** key on older projects, the **publishable** key (`sb_publishable_…`) on newer ones. Both are public by design. |
 
 Leave everything else blank; nothing later in this document needs it.
 
@@ -114,11 +114,19 @@ Either way, do not continue until it is clean.
 
 ## 5. Sign in
 
+**Deployed** (see [DEPLOY-EASYPANEL.md](DEPLOY-EASYPANEL.md)): open your domain,
+e.g. `https://keeper.akhtar.app`. Everything from here on is identical; just
+substitute your domain wherever this says `localhost:3000`.
+
+**Locally:**
+
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`, click **Get started**, enter your email.
+Then open `http://localhost:3000`.
+
+Either way: click **Get started** and enter your email.
 
 > **Supabase's built-in email is rate-limited** — a handful of messages per
 > hour on the free tier. If you plan to repeat this, add your own SMTP under
@@ -270,7 +278,7 @@ was quietly papering over it.
 | Redirected to `/signin?error=link-expired` | Link opened in a different browser or device, or already used. |
 | Magic link never arrives | Rate limit. Add SMTP, or send from the dashboard. |
 | Tab freezes on *Create my vault* | The crypto worker did not load. Check the console for a worker error. |
-| `Missing NEXT_PUBLIC_SUPABASE_URL` in the browser | `.env.local` was added after `npm run dev` started. Restart it. |
+| "Supabase is not configured" on screen | Locally: `.env.local` was added after `npm run dev` started — restart it. Deployed: check `window.__FGK_CONFIG__` in the console; if it is `null`, the environment variables never reached the container. |
 | Stuck on "Opening…" | Vault locked, or the session expired. Hard-reload and unlock. |
 
 Anything not on this list is worth reporting rather than working around — it
