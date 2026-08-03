@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
 
 /**
- * Where the magic link lands.
+ * Where an emailed link lands — a sign-in link or a password reset.
  *
  * Exchanges the one-time code for a session cookie, then sends the visitor on
  * to the vault. What they see there depends on whether this account has keys

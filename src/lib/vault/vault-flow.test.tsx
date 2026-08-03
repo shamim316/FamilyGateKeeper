@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 
 import { VaultProvider } from './vault-provider';
 import { MemoryKeyStore } from './memory-key-store';
+import { forgetAccountPassword, rememberAccountPassword } from '@/lib/auth/passphrase-conflict';
 import type { CryptoEngine } from '@/lib/crypto/engine';
 import { EnvelopeError, type SealedEnvelope } from '@/lib/crypto';
 
@@ -89,6 +90,8 @@ function renderWithVault(ui: React.ReactNode, store: MemoryKeyStore) {
 
 beforeEach(() => {
   replace.mockClear();
+  // Module-level state, so one test's sign-in must not colour the next.
+  forgetAccountPassword();
   window.print = vi.fn();
   URL.createObjectURL = vi.fn(() => 'blob:kit');
   URL.revokeObjectURL = vi.fn();
@@ -202,6 +205,60 @@ describe('setting up a vault', () => {
 
     expect(await store.loadFamilies()).toHaveLength(1);
     expect(await store.loadWrappings(family.id)).toHaveLength(2);
+  });
+});
+
+describe('refusing to reuse the sign-in password as the passphrase', () => {
+  const ACCOUNT_PASSWORD = 'the sign-in password';
+
+  async function fillOutSetup(user: ReturnType<typeof userEvent.setup>, passphrase: string) {
+    await user.type(await screen.findByLabelText(/what should we call your family/i), 'Whitfield');
+    await user.type(screen.getByLabelText('Choose a passphrase'), passphrase);
+    await user.type(screen.getByLabelText('Type it once more'), passphrase);
+  }
+
+  it('will not let the vault be opened by the password the server can check', async () => {
+    const user = userEvent.setup();
+    const store = new MemoryKeyStore();
+    rememberAccountPassword(ACCOUNT_PASSWORD);
+    renderWithVault(<SetupPage />, store);
+
+    await fillOutSetup(user, ACCOUNT_PASSWORD);
+
+    // Everything else about the form is satisfied; this is the only thing
+    // holding it shut.
+    expect(screen.getByRole('button', { name: /create my vault/i })).toBeDisabled();
+    expect(screen.getByText(/this is your sign-in password/i)).toBeInTheDocument();
+    expect(screen.getByText(/the encryption would be for show/i)).toBeInTheDocument();
+    expect(await store.loadFamilies()).toHaveLength(0);
+  });
+
+  it('opens up again once a different passphrase is chosen', async () => {
+    const user = userEvent.setup();
+    rememberAccountPassword(ACCOUNT_PASSWORD);
+    renderWithVault(<SetupPage />, new MemoryKeyStore());
+
+    await fillOutSetup(user, ACCOUNT_PASSWORD);
+    expect(screen.getByRole('button', { name: /create my vault/i })).toBeDisabled();
+
+    for (const label of ['Choose a passphrase', 'Type it once more']) {
+      await user.clear(screen.getByLabelText(label));
+      await user.type(screen.getByLabelText(label), RIGHT);
+    }
+
+    expect(screen.getByRole('button', { name: /create my vault/i })).toBeEnabled();
+    expect(screen.queryByText(/this is your sign-in password/i)).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when it cannot compare the two', async () => {
+    // A returning member finishing setup on another day never typed their
+    // password here. Blocking them would be worse than asking them to be
+    // careful, but pretending we checked would be worse still.
+    renderWithVault(<SetupPage />, new MemoryKeyStore());
+
+    expect(
+      await screen.findByText(/we can only compare the two when you have just signed in/i),
+    ).toBeInTheDocument();
   });
 });
 

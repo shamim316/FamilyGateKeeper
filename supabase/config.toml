@@ -26,7 +26,7 @@ enabled = true
 [auth]
 enabled = true
 
-# Where the magic link sends people back to. Change to your real domain before
+# Where emailed links send people back to. Change to your real domain before
 # deploying; a link that redirects somewhere not on this list is rejected, which
 # is the point.
 site_url = "https://keeper.akhtar.app"
@@ -39,14 +39,31 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 
-# No passwords anywhere in this product. The only account credential is a link
-# in your inbox; the passphrase that decrypts the vault never reaches the
-# server, and having two secrets is how users end up making them identical.
 enable_signup = true
+
+# The account password only opens the door. Ten characters is the floor the
+# sign-in form enforces too; Supabase's own default of six is too low for
+# something that guards a vault, even one it cannot itself decrypt.
+#
+# This password is NOT the vault passphrase, and the app refuses to let them be
+# the same. The passphrase never reaches this server — if it did, and it matched
+# the hash stored here, the encryption would be theatre.
+minimum_password_length = 10
 
 [auth.email]
 enable_signup = true
-enable_confirmations = true
+
+# Off deliberately. Confirmation would email every new account, and a project on
+# Supabase's built-in SMTP gets only a handful of messages an hour before it
+# starts returning "email rate limit exceeded" — which is exactly what happened.
+# With this off, sign-up returns a session immediately and no mail is sent at
+# all, so nothing about signing in depends on email delivery.
+#
+# The cost is that an address is not proven to belong to the person who typed
+# it. That buys them nothing: the vault is opened by a passphrase this server
+# never sees, so an unverified address cannot reach anyone's data. Turn this
+# back on once a real SMTP provider is configured under [auth.email.smtp].
+enable_confirmations = false
 double_confirm_changes = true
 
 [analytics]

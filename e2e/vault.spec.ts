@@ -5,29 +5,36 @@ import { test, expect } from '@playwright/test';
  * survives a real round trip through a real Postgres, and that the row the
  * server ends up holding is unreadable.
  *
- * Requires a live Supabase project and a way to complete a magic-link sign-in.
- * `E2E_SESSION_COOKIE` is the pragmatic route — capture a signed-in session
- * once and hand it to the browser — because automating a mailbox is a fragile
- * dependency for a check that runs on every push.
+ * Requires a live Supabase project with `Confirm email` off — see VERIFY.md
+ * step 3. Each test signs up a fresh account through the real form, which is
+ * both more honest than injecting a session cookie and necessary: these tests
+ * create a family, so they need an account that has none.
+ *
+ * The account password and the vault passphrase are deliberately different
+ * strings. The setup screen refuses them being the same, so a test that reused
+ * one would fail for the right reason at the wrong moment.
  */
 
-const configured =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.E2E_SESSION_COOKIE;
+const configured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const PASSWORD = 'e2e account password';
 
 test.describe('the vault, end to end', () => {
-  test.skip(
-    !configured,
-    'Needs NEXT_PUBLIC_SUPABASE_URL and E2E_SESSION_COOKIE. See docs/PLAN.md.',
-  );
+  test.skip(!configured, 'Needs a live Supabase project. See docs/VERIFY.md.');
 
-  test.beforeEach(async ({ context, baseURL }) => {
-    await context.addCookies([
-      {
-        name: 'sb-access-token',
-        value: process.env.E2E_SESSION_COOKIE!,
-        url: baseURL!,
-      },
-    ]);
+  test.beforeEach(async ({ page }) => {
+    // Unique per test, so every run starts with an account that has no vault.
+    const email = `e2e+${Date.now()}${Math.random().toString(36).slice(2, 7)}@example.com`;
+
+    await page.goto('/signin');
+    await page.getByRole('button', { name: /create an account instead/i }).click();
+    await page.getByLabel(/email address/i).fill(email);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: /create my account/i }).click();
+
+    // With confirmations off this is immediate and sends no mail. If a "check
+    // your email" screen appears instead, the project still has them on.
+    await expect(page).toHaveURL(/\/(vault|setup|unlock)/, { timeout: 15_000 });
   });
 
   test('sets up a vault, locks it, and unlocks it again', async ({ page }) => {

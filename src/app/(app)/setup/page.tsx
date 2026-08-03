@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVault } from '@/lib/vault/vault-provider';
+import {
+  canCheckAgainstAccountPassword,
+  forgetAccountPassword,
+  isAccountPassword,
+} from '@/lib/auth/passphrase-conflict';
 import { RecoveryKitStep } from '@/components/recovery-kit-step';
 import {
   Button,
@@ -35,10 +40,16 @@ export default function SetupPage() {
 
   const tooShort = passphrase.length > 0 && passphrase.length < MINIMUM_PASSPHRASE_LENGTH;
   const mismatch = confirmation.length > 0 && confirmation !== passphrase;
+
+  // Reusing the sign-in password here would make the vault key something the
+  // server can verify, which is the one thing it must never be.
+  const reusesPassword = isAccountPassword(passphrase);
+
   const ready =
     effectiveName.trim().length > 0 &&
     passphrase.length >= MINIMUM_PASSPHRASE_LENGTH &&
-    confirmation === passphrase;
+    confirmation === passphrase &&
+    !reusesPassword;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -53,6 +64,7 @@ export default function SetupPage() {
       setStep({ name: 'kit', code: result.recoveryCode, familyName: result.family.name });
       setPassphrase('');
       setConfirmation('');
+      forgetAccountPassword();
     } catch (setUpError) {
       setError(
         setUpError instanceof Error
@@ -109,7 +121,13 @@ export default function SetupPage() {
             onChange={setPassphrase}
             showStrength
             hint="Four unrelated words beats one clever word. Something you will still recall next year."
-            error={tooShort ? `At least ${MINIMUM_PASSPHRASE_LENGTH} characters, please.` : null}
+            error={
+              reusesPassword
+                ? 'This is your sign-in password. The vault needs a different one — see below.'
+                : tooShort
+                  ? `At least ${MINIMUM_PASSPHRASE_LENGTH} characters, please.`
+                  : null
+            }
           />
 
           <PassphraseField
@@ -126,6 +144,21 @@ export default function SetupPage() {
           This passphrase never leaves your device, so we could not reset it even if you asked. If
           you forget it, the recovery code we show you next is the only way back in.
         </Callout>
+
+        {reusesPassword ? (
+          <Callout tone="danger" title="Not your sign-in password">
+            Your sign-in password is stored on our server, in a form we can check. If it also
+            unlocked your vault, anyone who took that server could read your information — and the
+            encryption would be for show. Please pick something else.
+          </Callout>
+        ) : (
+          !canCheckAgainstAccountPassword() && (
+            <Callout title="Use something different from your sign-in password">
+              We can only compare the two when you have just signed in, so this one is on trust.
+              Your sign-in password lives on our server; this passphrase must not.
+            </Callout>
+          )
+        )}
 
         <ErrorMessage>{error}</ErrorMessage>
 

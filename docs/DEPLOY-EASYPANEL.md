@@ -86,8 +86,8 @@ always DNS not having propagated, or a Cloudflare proxy in the way.
 
 ## 5. Tell Supabase about the domain
 
-This is the step that is easy to forget and produces a confusing failure: the
-magic link will simply refuse to come back.
+This is the step that is easy to forget and produces a confusing failure: an
+emailed link will simply refuse to come back.
 
 Supabase → **Authentication → URL Configuration**:
 
@@ -95,6 +95,16 @@ Supabase → **Authentication → URL Configuration**:
 - **Redirect URLs:** add both
   - `https://keeper.akhtar.app/**`
   - `http://localhost:3000/**` — keep this so local development still works
+
+Then Supabase → **Authentication → Providers → Email**:
+
+- **Confirm email: off**
+
+Leave it on and every new account triggers a confirmation email; Supabase's
+built-in sender allows a handful an hour and then fails with **email rate limit
+exceeded**, which locks you out of your own deployment. With it off, sign-up
+returns a session immediately and sends nothing. Turn it back on after
+configuring your own SMTP under **Project Settings → Auth → SMTP**.
 
 ---
 
@@ -134,8 +144,10 @@ anything else.
 Follow [`VERIFY.md`](VERIFY.md) from step 5, substituting
 `https://keeper.akhtar.app` for `http://localhost:3000`. In short:
 
-1. **Get started**, enter your email, open the link **in the same browser**
-2. Create a family and a passphrase — watch that the page stays responsive
+1. **Get started** → **Create an account instead**, then an email and a
+   password of at least ten characters. No email is sent
+2. Create a family and a passphrase — a *different* secret from the password,
+   which the screen enforces — and watch that the page stays responsive
    during the pause, which is the crypto worker doing its job
 3. Save the recovery code and answer the challenge
 4. On `/vault`, run **Check the round trip**
@@ -165,7 +177,9 @@ removes rather than manages.
 | `window.__FGK_CONFIG__` is `null` | Environment variables not set, or the container was not restarted after setting them |
 | "Supabase is not configured" on screen | Same |
 | Certificate will not issue | DNS not propagated, or Cloudflare proxy on. Grey-cloud it, reissue, re-enable |
-| Magic link goes to `localhost` | `Site URL` in Supabase still points at localhost. Step 5 |
+| **Email rate limit exceeded** | Supabase's built-in mail server. Turn **Confirm email** off and use email + password, which sends nothing. Step 5 |
+| Sign-up asks you to check your email | **Confirm email** still on in the dashboard. Step 5 |
+| Emailed link goes to `localhost` | `Site URL` in Supabase still points at localhost. Step 5 |
 | "Could not create your family" | Fixed. The insert read the new row back with RETURNING, which triggers the SELECT policy before the ownership trigger has run |
 | Redirected to `0.0.0.0:3000` after sign-in | Fixed. Behind a proxy the container only sees its own bind address, so redirects have to come from `SITE_URL` or the `X-Forwarded-*` headers rather than the request. Make sure `SITE_URL` is set |
 | Redirected to `/signin?error=link-expired` | Link opened in a different browser or device, or `keeper.akhtar.app/**` missing from Redirect URLs |

@@ -73,14 +73,34 @@ do not bypass it.
 
 ---
 
-## 3. Set the Auth redirect URLs
+## 3. Set up Auth
 
 **Authentication → URL Configuration:**
 
 - **Site URL:** `http://localhost:3000`
 - **Redirect URLs:** add `http://localhost:3000/**`
 
-Without these the magic link bounces and you never reach `/auth/callback`.
+Without these an emailed link bounces and you never reach `/auth/callback`.
+
+**Authentication → Providers → Email:**
+
+- **Confirm email: off.**
+
+This one matters more than it looks. With it on, creating an account sends a
+confirmation message, and a project on Supabase's built-in mail server gets only
+a handful of messages an hour before every attempt fails with **email rate limit
+exceeded**. With it off, signing up returns a session immediately and **no email
+is sent at all** — which is the point: nothing about getting into the app should
+depend on mail delivery.
+
+The setting also lives in [`supabase/config.toml`](../supabase/config.toml) as
+`enable_confirmations = false`, but the dashboard is what the hosted project
+actually reads unless you are pushing config with the CLI. Set it in both.
+
+What you give up is proof that the address belongs to whoever typed it. That
+costs nothing here: the vault is opened by a passphrase this server never sees,
+so an unverified address cannot reach anybody's data. Turn confirmations back on
+once you have configured real SMTP under **Project Settings → Auth → SMTP**.
 
 ---
 
@@ -126,18 +146,24 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
-Either way: click **Get started** and enter your email.
+Click **Get started**, then **Create an account instead**. Enter an email address
+and a password of at least ten characters.
 
-> **Supabase's built-in email is rate-limited** — a handful of messages per
-> hour on the free tier. If you plan to repeat this, add your own SMTP under
-> **Project Settings → Auth → SMTP Settings** first. If you get locked out, the
-> dashboard under **Authentication → Users** can send a magic link directly.
+With *Confirm email* off (step 3) this sends no mail at all. You are signed in
+the moment the form submits and should land on `/setup`.
 
-Open the link **on the same device and browser**. The sign-in uses PKCE, and the
-verifier lives in a cookie in that browser; opening the link on your phone
-instead will fail with `link-expired`.
+> **The password you type here is not the vault passphrase**, and the next
+> screen will refuse to let you use the same string for both. The password is
+> stored on Supabase's server as a hash it can check; the passphrase must be
+> something no server can check. If they were the same, whoever took the auth
+> database would hold the key to the vault, and the encryption would be
+> decoration. The setup screen compares them and blocks a match.
 
-You should land on `/setup`.
+**Emailed links still exist** as a fallback — *Email me a link instead* and
+*I have forgotten my password*, both on the sign-in screen. Both go through
+`/auth/callback` and both are subject to that rate limit. If you use one, open
+it **on the same device and browser**: sign-in uses PKCE and the verifier lives
+in a cookie there, so opening the link on your phone fails with `link-expired`.
 
 ---
 
@@ -245,7 +271,7 @@ appliances, doctors, and schools.
 |---|---|
 | Migrations apply to real Postgres | Reminders (not built) |
 | RLS and grants behave as the local suite claims | Emergency screen (not built) |
-| Magic-link sign-in and the PKCE callback | Encrypted document upload (not built) |
+| Password sign-in, and the PKCE callback | Encrypted document upload (not built) |
 | Argon2id in a worker, on a real browser | Multi-member families and sharing |
 | Secrets stored as ciphertext, end to end | Billing |
 | Autosave, masking, child records | Anything on a phone, or offline |
@@ -263,6 +289,17 @@ Storage, which has no stand-in.
 the public hostname — `request.url` carries the address it was told to bind to —
 so every redirect built from it was wrong. Redirects now resolve the public
 origin from `SITE_URL`, falling back to the `X-Forwarded-*` headers.
+
+**Sign-in was unusable after a few attempts.** *Email rate limit exceeded.* The
+product had deliberately been magic-link only, on the reasoning that one secret
+is better than two — but that made every sign-in depend on mail delivery, and
+Supabase's built-in sender allows only a handful of messages an hour. The
+original decision traded a real, permanent dependency for a wording problem.
+Email and password sign-in is now the primary path and sends nothing; links
+remain as a fallback. The two-secrets confusion the original choice was avoiding
+is handled where it actually bites: the setup screen refuses a vault passphrase
+equal to the account password, since a passphrase the auth server can verify is
+not end-to-end encryption at all.
 
 **A family could not be created.** "Could not create your family" on the setup
 screen. The insert used `RETURNING` to read the new row back, which makes
@@ -299,7 +336,10 @@ was quietly papering over it.
 | `relation "public.families" does not exist` | Migrations not applied. Step 2. |
 | `permission denied for table …` | `0005_api_grants.sql` not applied. |
 | Redirected to `/signin?error=link-expired` | Link opened in a different browser or device, or already used. |
-| Magic link never arrives | Rate limit. Add SMTP, or send from the dashboard. |
+| **Email rate limit exceeded** | Supabase's built-in mail server, a handful of messages an hour. Turn **Confirm email** off (step 3) and sign in with a password — that path sends nothing. For the link and reset flows, configure SMTP. |
+| Sign-up says an email was sent | *Confirm email* is still on in the dashboard. Step 3. |
+| Emailed link never arrives | Same rate limit. Add SMTP, or send from **Authentication → Users**. |
+| "This is your sign-in password" on `/setup` | Working as intended — the vault needs a different secret. Pick another. |
 | Tab freezes on *Create my vault* | The crypto worker did not load. Check the console for a worker error. |
 | "Supabase is not configured" on screen | Locally: `.env.local` was added after `npm run dev` started — restart it. Deployed: check `window.__FGK_CONFIG__` in the console; if it is `null`, the environment variables never reached the container. |
 | Stuck on "Opening…" | Vault locked, or the session expired. Hard-reload and unlock. |

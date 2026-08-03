@@ -403,15 +403,29 @@ Ten milestones. Each ends in something deployable and testable.
    `family_members` / auth, RLS helper and policy template, Dockerfile, Easypanel deploy, CI.
 2. **Crypto core** — `lib/crypto/` with Argon2id KDF, AES-GCM seal/open, DEK/CEK wrapping, recovery
    code generation, X25519 envelopes. Heavy unit tests. No UI yet.
-3. **Vault shell** — ✅ *done.* Magic-link sign-in, family creation, the recovery-kit ceremony
+3. **Vault shell** — ✅ *done.* Sign-in, family creation, the recovery-kit ceremony
    (print, download, checkbox, and a typed-back group), unlock, recovery, passphrase change, and
    auto-lock with cross-tab locking. Argon2id runs in a Web Worker, so raw key bytes and the
    passphrase never reach the main thread.
 
    Two changes from the original sketch. Passkey quick-unlock moved to Milestone 10, where the
-   other device and member key work lives. And sign-in is magic-link only: an account password
-   alongside a vault passphrase means two secrets, which users make identical, which quietly
-   collapses the security model.
+   other device and member key work lives. And sign-in was originally magic-link only — no account
+   password to confuse with the vault passphrase.
+
+   That did not survive contact with a real project. Supabase's built-in mail server allows a
+   handful of messages an hour, so a link-only product is one that stops letting people in, and
+   no amount of good wording fixes a delivery dependency. Sign-in is now **email and password**,
+   which sends nothing; links remain as a fallback for people who prefer them, and password reset
+   uses the same callback.
+
+   The two-secrets problem the original choice was avoiding is now handled where it actually
+   bites. The account password is stored by Supabase as a hash it can verify; the vault passphrase
+   must be verifiable by nobody. If a user made them the same, whoever held the auth database
+   would hold the key to the vault. So the setup screen **refuses** a passphrase equal to the
+   account password rather than warning about it — compared as a SHA-256 digest held in memory for
+   the few seconds between signing up and choosing a passphrase, and discarded once the vault
+   exists. When the comparison is impossible — a returning member finishing setup another day —
+   the screen says so rather than implying a check it did not make.
 4. **Generic tables & UI kit** — ✅ *done.* `contacts`, `policies`, and `financial_accounts`, with
    the shared record list, detail form, autosave, and masked-secret components.
 

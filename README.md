@@ -16,8 +16,9 @@ Built so far:
 
 - Full Postgres schema with row-level security on every table (`supabase/migrations/`)
 - Client-side encryption core with test coverage (`src/lib/crypto/`)
-- The vault shell (`src/lib/vault/`, `src/app/`) — magic-link sign-in, family creation, the
-  recovery-kit ceremony, unlock, recovery, and auto-lock
+- The vault shell (`src/lib/vault/`, `src/app/`) — email and password sign-in, family creation, the
+  recovery-kit ceremony, unlock, recovery, and auto-lock. The account password and the vault
+  passphrase are enforced to be different secrets; only the first one ever reaches a server
 - The record layer (`src/lib/records/`) — a record type is a declaration, not a screen. All
   thirteen categories run on it, with autosave, no save buttons, and child collections for
   service logs, ID documents, appliances, doctors, and schools.

@@ -4,9 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
  * End-to-end tests against a real Supabase project.
  *
  * These are skipped unless the environment is configured, because they need
- * something the repository cannot carry: a live project, and a mailbox the
- * magic link can be read out of. Everything below the sign-in step is covered
- * by the component and ceremony suites in `npm test`.
+ * something the repository cannot carry: a live project, with `Confirm email`
+ * off so signing up needs no mailbox. Everything below the sign-in step is
+ * covered by the component and ceremony suites in `npm test`.
  */
 export default defineConfig({
   testDir: './e2e',
