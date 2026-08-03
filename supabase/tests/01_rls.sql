@@ -50,6 +50,21 @@ select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
 insert into public.families (id, name)
   values ('aaaaaaaa-0000-0000-0000-000000000001', 'Whitfield');
 
+-- The app inserts without RETURNING, and must keep doing so. A RETURNING
+-- clause makes Postgres apply the SELECT policy to the new row, and membership
+-- is only created by the AFTER trigger below — so the creator cannot see their
+-- own family yet and the statement fails. The original test used a plain insert
+-- and so never noticed; this asserts both shapes explicitly.
+do $$
+begin
+  insert into public.families (name) values ('Returning probe') returning id;
+  raise exception 'FAIL insert-with-returning unexpectedly succeeded — if the '
+    'policies now allow it, simplify createFamily in supabase-key-store.ts';
+exception
+  when insufficient_privilege then
+    raise notice 'ok   a family cannot be inserted with RETURNING, as expected';
+end $$;
+
 select pg_temp.check(
   'creating a family makes the creator its owner',
   (select role = 'owner' and status = 'active'

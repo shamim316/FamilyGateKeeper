@@ -264,6 +264,14 @@ the public hostname — `request.url` carries the address it was told to bind to
 so every redirect built from it was wrong. Redirects now resolve the public
 origin from `SITE_URL`, falling back to the `X-Forwarded-*` headers.
 
+**A family could not be created.** "Could not create your family" on the setup
+screen. The insert used `RETURNING` to read the new row back, which makes
+Postgres apply the SELECT policy — and that policy requires membership, which is
+created by an AFTER trigger that has not fired yet. The creator could not see
+their own family. The id is now generated client-side and nothing is returned.
+The RLS suite had used a plain insert and so never exercised the statement the
+app actually sends; it now asserts both shapes.
+
 **The middleware had never run.** Next only picks up `middleware.ts` beside the
 `app` directory. This project uses `src/app`, so it had to be
 `src/middleware.ts`; at the repo root it was silently ignored. The auth guard

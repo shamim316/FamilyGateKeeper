@@ -72,18 +72,26 @@ export class SupabaseKeyStore implements KeyStore {
   }
 
   async createFamily(name: string): Promise<FamilySummary> {
-    // The families_claim_owner trigger adds the creator as an active owner, so
-    // there is no second insert to keep in sync here.
-    const { data, error } = await this.supabase
-      .from('families')
-      .insert({ name })
-      .select('id, name')
-      .single();
+    // The id is minted here rather than read back, because RETURNING cannot
+    // work on this table.
+    //
+    // A RETURNING clause makes Postgres apply the SELECT policy to the new row,
+    // and families_select requires membership. Membership is created by the
+    // families_claim_owner trigger, which is AFTER INSERT and so has not fired
+    // when RETURNING is evaluated — the row is therefore invisible to the
+    // person who just created it, and the insert fails.
+    //
+    // Loosening the SELECT policy to cover member-less families would make
+    // every such family readable by any signed-in user, which is a worse trade
+    // than generating a UUID.
+    const id = crypto.randomUUID();
 
-    if (error || !data) {
+    const { error } = await this.supabase.from('families').insert({ id, name });
+
+    if (error) {
       throw new KeyStoreError('Could not create your family', { cause: error });
     }
-    return data as FamilySummary;
+    return { id, name };
   }
 
   async loadWrappings(familyId: string): Promise<StoredWrapping[]> {
